@@ -11,8 +11,6 @@ __*.json
 __pycache__/
 *.py[cod]
 *$py.class
-ImportarSurvey_pyt/__pycache__/
-
 
 # C extensions
 *.so

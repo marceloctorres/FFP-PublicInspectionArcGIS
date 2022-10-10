@@ -14,7 +14,7 @@ from datetime import datetime
 from os import path
 from logging import handlers
 
-#### CONSTANTES ######
+#### CONSTANTS ######
 CONFIG_PATH = ""
 LOG_PATH = ""
 LOG_FILE = ""
@@ -167,7 +167,7 @@ class LoggerFactory :
     else :
       pass
 
-class Configuracion:
+class Configuration:
 
     def __init__(self, configPath):        
         try:
