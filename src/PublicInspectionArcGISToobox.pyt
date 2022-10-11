@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import arcpy
-import PublicInpectionArcGIS
 
 from PublicInpectionArcGIS.Utils import ARCGIS_HANDLER, STREAM_HANDLER
 from PublicInpectionArcGIS.ToolsLib import PublicInspectionTools
@@ -112,6 +111,9 @@ class PublicInspectionArcGISTool2(object):
         param0 = parameters[self.Params["param0"]].valueAsText
         PublicInspectionTools.PublicInspectionTool2(param0=param0)
 
-        return
+        PublicInspectionTools.PublicInspectionTool1(
+    param0="Parameter 0 Tool 1"
+)
 
+        return
 
