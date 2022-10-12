@@ -3,8 +3,8 @@ import setuptools
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()    
  
-setuptools.setup(name='DemoConecteseSigPy', 
-        version='0.0.0.2',
+setuptools.setup(name='PublicInspectionArcGIS', 
+        version='0.0.0.1',
         author='Esri Colombia',
         author_email='mtorres@esri.co',
         license='MIT',
@@ -23,7 +23,7 @@ setuptools.setup(name='DemoConecteseSigPy',
         ],
         package_dir={"": "src"},
         packages = setuptools.find_packages(where="src"),
-        package_data={'DemoConecteseSigPy':[
+        package_data={'PublicInspectionArcGIS':[
                     '*.json',
                     'esri/toolboxes/*',  
                     'esri/arcpy/*', 
