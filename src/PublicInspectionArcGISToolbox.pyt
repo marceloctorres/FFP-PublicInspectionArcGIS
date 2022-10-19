@@ -25,8 +25,8 @@ class SetupDataSourcesTool(object):
         
         self.canRunInBackground = True
         self.Params = {"param0": 0}
-        ToolboxLogger.initLogger(STREAM_HANDLER | ARCGIS_HANDLER )
-        ToolboxLogger.setDebugLevel()
+        ToolboxLogger.initLogger(handler_type = STREAM_HANDLER | ARCGIS_HANDLER )
+        ToolboxLogger.setInfoLevel()
 
     def getParameterInfo(self):
         """Define parameter definitions"""
@@ -35,7 +35,7 @@ class SetupDataSourcesTool(object):
         param = arcpy.Parameter(
             displayName="Input FGDB",
             name="param0",
-            datatype="GPString",
+            datatype="DEWorkspace",
             parameterType="Required",
             direction="Input",
         )
