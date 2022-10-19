@@ -16,6 +16,7 @@ class SetupDataSourcesTool :
         self.loadDataSourcePath = loadDataSourcePath
         self.folder, subfolder = os.path.split(self.loadDataSourcePath)
     
+    @ToolboxLogger.log_method
     def createSurveyDataSource(self):
         file_folder_path = os.path.dirname(os.path.realpath(__file__))
         xml_path = os.path.join(file_folder_path, self.LOAD_XML_PATH)
@@ -33,6 +34,7 @@ class SetupDataSourcesTool :
 
         arcpy.management.Delete(xml_path)        
 
+    @ToolboxLogger.log_method
     def copySurveyDataSource(self) :
         output_datasource = os.path.join(self.folder, self.SURVEY_DATASET_NAME)
         if(os.path.exists(output_datasource)) :
@@ -41,6 +43,7 @@ class SetupDataSourcesTool :
         shutil.copytree(self.loadDataSourcePath, output_datasource)
         ToolboxLogger.info("Survey Dataset Created")
 
+    @ToolboxLogger.log_method
     def createInspectionDataSource(self) :
         output_datasource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         if(os.path.exists(output_datasource)) :
@@ -56,6 +59,7 @@ class SetupDataSourcesTool :
         ToolboxLogger.info("Inspection Parcel Fabric schema imported")
         self.inspectionDataSource = output_datasource
     
+    @ToolboxLogger.log_method
     def appendDataset(self, input_ds, output_ds):
         in_fields = arcpy.ListFields(input_ds)
         out_fields = arcpy.ListFields(output_ds)
@@ -80,6 +84,7 @@ class SetupDataSourcesTool :
         arcpy.management.Append(input_ds, output_ds, "NO_TEST", fieldMappings)
         ToolboxLogger.info("{} data appended".format(input_ds))
 
+    @ToolboxLogger.log_method
     def appendParcelData(self) :
         arcpy.env.workspace = self.loadDataSourcePath
 
@@ -95,13 +100,21 @@ class SetupDataSourcesTool :
 
             self.appendDataset(input_tb, output_tb)
 
+    @ToolboxLogger.log_method
     def createParcelRecords(self) : 
         in_parcel_features = os.path.join(self.inspectionDataSource, self.PARCEL_TYPE)
         arcpy.parcel.CreateParcelRecords(in_parcel_features, self.PARCEL_RECORD_FIELD) 
 
+    @ToolboxLogger.log_method
     def buildParcelFabric(self):
         in_parcel_fabric = os.path.join(self.inspectionDataSource, self.PARCEL_FABRIC_PATH)
         arcpy.parcel.BuildParcelFabric(in_parcel_fabric, "MAXOF")
+    
+    @ToolboxLogger.log_method
+    def createInspectionMap(self) :
+        aprx = arcpy.mp.ArcGISProject('current')
+        aprx.add
+
 
     def execute(self) :
         self.createSurveyDataSource()

@@ -10,19 +10,18 @@ class Toolbox(object):
     def __init__(self):
         """Define the toolbox (the name of the toolbox is the name of the
         .pyt file)."""
-        self.label = "FFP Public Inspection ArcGIS Tools"
-        self.alias = "PublicInspectionArcGISToolbox"
+        self.label = "FFP ArcGIS Public Inspection Tools"
+        self.alias = "ArcGISPublicInspectionToolbox"
         
         # List of tool classes associated with this toolbox
-        self.tools = [PublicInspectionArcGISTool1,
-                      PublicInspectionArcGISTool2]
+        self.tools = [SetupDataSourcesTool]
 
-class PublicInspectionArcGISTool1(object):
+class SetupDataSourcesTool(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "FFP Public Inspection Tool 1"
-        self.description = "FFP Public Inspection Tool 1"
-        self.alias = "PublicInspectionArcGISTool1"
+        self.label = "Setup Datasources"
+        self.description = "Create FGDBs to make Public Inspection"
+        self.alias = "SetupDataSourcesTool"
         
         self.canRunInBackground = True
         self.Params = {"param0": 0}
@@ -32,7 +31,7 @@ class PublicInspectionArcGISTool1(object):
         params = []
 
         param = arcpy.Parameter(
-            displayName="Parameter 0",
+            displayName="Input FGDB",
             name="param0",
             datatype="GPString",
             parameterType="Required",
@@ -61,7 +60,7 @@ class PublicInspectionArcGISTool1(object):
         """The source code of the tool."""
 
         param0 = parameters[self.Params["param0"]].valueAsText
-        PublicInspectionTools.PublicInspectionTool1(param0=param0)
+        PublicInspectionTools.PublicInspectionSetupDataSource(param0=param0)
 
         return
 
