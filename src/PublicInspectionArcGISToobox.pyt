@@ -2,7 +2,7 @@
 
 import arcpy
 
-from PublicInpectionArcGIS.Utils import ARCGIS_HANDLER, STREAM_HANDLER
+from PublicInpectionArcGIS.Utils import ARCGIS_HANDLER, STREAM_HANDLER, ToolboxLogger
 from PublicInpectionArcGIS.ToolsLib import PublicInspectionTools
 
 class Toolbox(object):
@@ -25,6 +25,8 @@ class SetupDataSourcesTool(object):
         
         self.canRunInBackground = True
         self.Params = {"param0": 0}
+        ToolboxLogger.initLogger(STREAM_HANDLER | ARCGIS_HANDLER )
+        ToolboxLogger.setDebugLevel()
 
     def getParameterInfo(self):
         """Define parameter definitions"""

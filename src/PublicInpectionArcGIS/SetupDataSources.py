@@ -9,7 +9,7 @@ class SetupDataSourcesTool :
     PARCEL_XML_PATH = "XmlWorkspaceDocuments\\FFP-ParcelFabric.xml"
     LOAD_XML_PATH = "XmlWorkspaceDocuments\\load.xml"
     PARCEL_TYPE = "SpatialUnit"
-    PARCEL_RECORD_FIELD = "spatialunit_name"
+    PARCEL_RECORD_FIELD = "legal_id"
     PARCEL_FABRIC_PATH = "Parcel\PublicInspection"
     
     def __init__(self, loadDataSourcePath, aprx) :
@@ -105,11 +105,13 @@ class SetupDataSourcesTool :
     def createParcelRecords(self) : 
         in_parcel_features = os.path.join(self.inspectionDataSource, self.PARCEL_TYPE)
         arcpy.parcel.CreateParcelRecords(in_parcel_features, self.PARCEL_RECORD_FIELD) 
+        ToolboxLogger.info("Parcel Records Created")
 
     @ToolboxLogger.log_method
     def buildParcelFabric(self):
         in_parcel_fabric = os.path.join(self.inspectionDataSource, self.PARCEL_FABRIC_PATH)
         arcpy.parcel.BuildParcelFabric(in_parcel_fabric, "MAXOF")
+        ToolboxLogger.info("Parcel Fabric Built")
     
     @ToolboxLogger.log_method
     def createInspectionMap(self) :
