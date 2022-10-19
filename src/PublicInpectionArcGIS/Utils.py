@@ -148,14 +148,14 @@ class LoggerFactory :
     chs.setFormatter(logging.Formatter(self.pattern))
     chs.setLevel(self.logLevel)
     logger.addHandler(chs)
-    logger.debug("Agregando RotatingFileHandler")
+    logger.debug("Adding RotatingFileHandler")
   
   def addStreamHandler(self, logger) :
       ch = logging.StreamHandler(sys.stdout)                             
       ch.setFormatter(logging.Formatter(self.pattern))
       ch.setLevel(self.logLevel)
       logger.addHandler(ch)
-      logger.info("Agregando StreamHandler")
+      logger.info("Adding StreamHandler")
 
   def addArcGisLogHandler(self, logger) :
     if WINDOWS: 
@@ -163,7 +163,7 @@ class LoggerFactory :
       ch.setFormatter(logging.Formatter(self.pattern))
       ch.setLevel(self.logLevel)
       logger.addHandler(ch)
-      logger.info("Agregando ArcGisLogHandler")
+      logger.info("Adding ArcGisLogHandler")
     else :
       pass
 
@@ -183,7 +183,7 @@ class Configuration:
             self.configs = json.loads(config)
 
         except Exception as d:
-            self.WriteMessage("Archivo de configuracion no es válido, {}".format(str(d)))
+            self.WriteMessage("Configuration file isn't valid, {}".format(str(d)))
             raise d
 
     def getConfigKey(self, key):
@@ -191,7 +191,7 @@ class Configuration:
           value = self.configs[key]
           return value
         except Exception as d:            
-          self.WriteMessage("La llave ''{}'' no existe.\n{}".format(key, str(d)))
+          self.WriteMessage("Key ''{}'' doesn't existe.\n{}".format(key, str(d)))
           pass
             
     def WriteMessage(self, msg) :

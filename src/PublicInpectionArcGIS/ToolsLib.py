@@ -2,6 +2,7 @@
 
 from PublicInpectionArcGIS.Utils import ToolboxLogger
 from PublicInpectionArcGIS.Utils import ARCGIS_HANDLER, STREAM_HANDLER
+from PublicInpectionArcGIS.SetupDataSources import SetupDataSourcesTool
 
 class PublicInspectionTools :
 
@@ -12,3 +13,9 @@ class PublicInspectionTools :
     @staticmethod 
     def PublicInspectionTool2(param0 = None):
         ToolboxLogger.info(param0)
+
+    @staticmethod
+    def PublicInspectionSetupDataSource(loadDataSourcePath = None, aprx = None) :
+        if loadDataSourcePath != None :
+            tool = SetupDataSourcesTool(loadDataSourcePath, aprx)
+            tool.execute()
