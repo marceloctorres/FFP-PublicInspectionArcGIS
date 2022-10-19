@@ -12,9 +12,10 @@ class SetupDataSourcesTool :
     PARCEL_RECORD_FIELD = "spatialunit_name"
     PARCEL_FABRIC_PATH = "Parcel\PublicInspection"
     
-    def __init__(self, loadDataSourcePath) :
+    def __init__(self, loadDataSourcePath, aprx) :
+        self.aprx = aprx
         self.loadDataSourcePath = loadDataSourcePath
-        self.folder, subfolder = os.path.split(self.loadDataSourcePath)
+        self.folder = self.aprx.homeFolder
     
     @ToolboxLogger.log_method
     def createSurveyDataSource(self):
@@ -112,11 +113,14 @@ class SetupDataSourcesTool :
     
     @ToolboxLogger.log_method
     def createInspectionMap(self) :
-        aprx = arcpy.mp.ArcGISProject('current')
+        ## aprx = arcpy.mp.ArcGISProject('CURRENT')
+        print(self.aprx)
 
+    @ToolboxLogger.log_method
     def execute(self) :
         self.createSurveyDataSource()
         self.createInspectionDataSource()
         self.appendParcelData()
         self.createParcelRecords()
         self.buildParcelFabric()
+        self.createInspectionMap()

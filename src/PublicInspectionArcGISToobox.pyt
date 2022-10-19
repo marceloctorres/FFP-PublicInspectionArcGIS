@@ -59,60 +59,9 @@ class SetupDataSourcesTool(object):
     def execute(self, parameters, messages):
         """The source code of the tool."""
 
-        param0 = parameters[self.Params["param0"]].valueAsText
-        PublicInspectionTools.PublicInspectionSetupDataSource(param0=param0)
-
-        return
-
-class PublicInspectionArcGISTool2(object):
-    def __init__(self):
-        """Define the tool (tool name is the name of the class)."""
-        self.label = "FFP Public Inspection Tool 2"
-        self.description = "FFP Public Inspection Tool 2"
-        self.alias = "PublicInspectionArcGISTool1"
+        loadDataSourcePath = parameters[self.Params["param0"]].valueAsText
+        aprx = arcpy.mp.ArcGISProject("CURRENT")
         
-        self.canRunInBackground = True
-        self.Params = {"param0": 0}
-
-    def getParameterInfo(self):
-        """Define parameter definitions"""
-        params = []
-
-        param = arcpy.Parameter(
-            displayName="Parameter 0",
-            name="param0",
-            datatype="GPString",
-            parameterType="Required",
-            direction="Input",
-        )
-        params.insert(self.Params["param0"], param)
-
-        return params
-
-    def isLicensed(self):
-        """Set whether tool is licensed to execute."""
-        return True
-
-    def updateParameters(self, parameters):
-        """Modify the values and properties of parameters before internal
-        validation is performed.  This method is called whenever a parameter
-        has been changed."""
-        return
-
-    def updateMessages(self, parameters):
-        """Modify the messages created by internal validation for each tool
-        parameter.  This method is called after internal validation."""
-        return
-
-    def execute(self, parameters, messages):
-        """The source code of the tool."""
-
-        param0 = parameters[self.Params["param0"]].valueAsText
-        PublicInspectionTools.PublicInspectionTool2(param0=param0)
-
-        PublicInspectionTools.PublicInspectionTool1(
-    param0="Parameter 0 Tool 1"
-)
+        PublicInspectionTools.PublicInspectionSetupDataSource(loadDataSourcePath=loadDataSourcePath, aprx=aprx)
 
         return
-
