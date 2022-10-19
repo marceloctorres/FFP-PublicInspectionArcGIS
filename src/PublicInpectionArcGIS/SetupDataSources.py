@@ -113,8 +113,6 @@ class SetupDataSourcesTool :
     @ToolboxLogger.log_method
     def createInspectionMap(self) :
         aprx = arcpy.mp.ArcGISProject('current')
-        aprx.add
-
 
     def execute(self) :
         self.createSurveyDataSource()
