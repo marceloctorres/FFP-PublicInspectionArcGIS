@@ -46,7 +46,7 @@ class SetupDataSourcesTool :
         if(os.path.exists(self.surveyDataSource)) :
             arcpy.Delete_management(self.surveyDataSource)
 
-        shutil.copytree(self.loadDataSourcePath, self.surveyDataSource, "CURRENT")
+        shutil.copytree(self.loadDataSourcePath, self.surveyDataSource)
         ToolboxLogger.info("Survey Dataset Created")
 
     @ToolboxLogger.log_method
@@ -54,7 +54,7 @@ class SetupDataSourcesTool :
         if(os.path.exists(self.inspectionDataSource)) :
             arcpy.Delete_management(self.inspectionDataSource)
 
-        arcpy.management.CreateFileGDB(self.folder, self.INSPECTION_DATASET_NAME)
+        arcpy.management.CreateFileGDB(self.folder, self.INSPECTION_DATASET_NAME, "CURRENT")
         ToolboxLogger.info("Inspection Dataset Created")
 
         file_folder_path = os.path.dirname(os.path.realpath(__file__))
