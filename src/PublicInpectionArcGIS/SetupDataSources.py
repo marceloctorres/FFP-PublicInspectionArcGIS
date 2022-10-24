@@ -73,29 +73,31 @@ class SetupDataSourcesTool :
         ToolboxLogger.debug("Output: {}".format(output_ds_path))
 
         result_in = arcpy.management.GetCount(input_ds_path)
+        if result_in != 0 :
+            in_fields = arcpy.ListFields(input_ds_path)
+            out_fields = arcpy.ListFields(output_ds_path)
 
-        in_fields = arcpy.ListFields(input_ds_path)
-        out_fields = arcpy.ListFields(output_ds_path)
+            fieldMappings = arcpy.FieldMappings()
+            fieldMappings.addTable(output_ds_path)
 
-        fieldMappings = arcpy.FieldMappings()
-        fieldMappings.addTable(output_ds_path)
+            fm = arcpy.FieldMap()
+            for in_field in in_fields:
+                if in_field.type != "OID" and in_field.type != "Geometry":
+                    if in_field.type.lower() == "globalid" :
+                        arcpy.management.AddIndex(output_ds_path, [in_field.name], "GUID")
 
-        fm = arcpy.FieldMap()
-        for in_field in in_fields:
-            if in_field.type != "OID" and in_field.type != "Geometry":
-                if in_field.type.lower() == "globalid" :
-                    arcpy.management.AddIndex(output_ds_path, [in_field.name], "GUID")
+                    fm = arcpy.FieldMap()
+                    fm.addInputField(input_ds_path, in_field.name)
 
-                fm = arcpy.FieldMap()
-                fm.addInputField(input_ds_path, in_field.name)
+                    out_field = [f for f in out_fields if f.name.lower() == in_field.name.lower()]
+                    fm.outputField = out_field[0]
+                    fieldMappings.addFieldMap(fm)
+                        
+            output = arcpy.management.Append(input_ds_path, output_ds_path, "NO_TEST", fieldMappings)
+            result_out = arcpy.management.GetCount(output)
+        else :
+            result_out = 0
 
-                out_field = [f for f in out_fields if f.name.lower() == in_field.name.lower()]
-                fm.outputField = out_field[0]
-                fieldMappings.addFieldMap(fm)
-                    
-        output = arcpy.management.Append(input_ds_path, output_ds_path, "NO_TEST", fieldMappings)
-
-        result_out = arcpy.management.GetCount(output)
         ToolboxLogger.info("Input Count: {} Output Count: {}".format(result_in[0], result_out[0]))
         ToolboxLogger.info("...'{}' Data Appended".format(input_ds))
 
@@ -144,16 +146,15 @@ class SetupDataSourcesTool :
 
         layers =  [l for l in map.listLayers() if not l.isBasemapLayer]
         for layer in layers :
-            
-            layer_path = os.path.join(self.folder, "{}.lyrx".format(layer.longName))
-            exist = os.path.exists(layer_path)
+            layer_file_path = os.path.join(self.folder, "{}.lyrx".format(layer.longName))
+            exist = os.path.exists(layer_file_path)
             layer.visible = exist
 
             if exist :
                 ToolboxLogger.info("Apply Symbology From Layer: {}.lyrx".format(layer.longName))
-                arcpy.management.ApplySymbologyFromLayer(layer, layer_path, None, "DEFAULT")
+                arcpy.management.ApplySymbologyFromLayer(layer, layer_file_path, None, "DEFAULT")
 
-                layer.updateConnectionProperties(layer.name, layer.name)
+                layer.updateConnectionProperties(layer.connectionProperties, layer.connectionProperties)
         
         if self.aprx.activeMap != map:
             map.openView()
