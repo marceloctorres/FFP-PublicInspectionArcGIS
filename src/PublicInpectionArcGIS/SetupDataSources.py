@@ -34,7 +34,7 @@ class SetupDataSourcesTool :
         if(os.path.exists(self.surveyDataSource)) :
             arcpy.Delete_management(self.surveyDataSource)
 
-        arcpy.management.CreateFileGDB(self.folder, self.SURVEY_DATASET_NAME)
+        arcpy.management.CreateFileGDB(self.folder, self.SURVEY_DATASET_NAME, "CURRENT")
         ToolboxLogger.info("Survey Dataset Created")
         arcpy.management.ImportXMLWorkspaceDocument(self.surveyDataSource, xml_path)
         ToolboxLogger.info("Survey data Imported")
@@ -46,7 +46,7 @@ class SetupDataSourcesTool :
         if(os.path.exists(self.surveyDataSource)) :
             arcpy.Delete_management(self.surveyDataSource)
 
-        shutil.copytree(self.loadDataSourcePath, self.surveyDataSource)
+        shutil.copytree(self.loadDataSourcePath, self.surveyDataSource, "CURRENT")
         ToolboxLogger.info("Survey Dataset Created")
 
     @ToolboxLogger.log_method
