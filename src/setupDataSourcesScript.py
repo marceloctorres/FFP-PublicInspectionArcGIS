@@ -9,4 +9,4 @@ ToolboxLogger.setDebugLevel()
 fgdb_load = "D:\\FFP\\Load_Data.gdb"
 aprx_file = "D:\\mtorres\\OneDrive - Esri NOSA\\Documentos\\ArcGIS\Projects\\Public Inspection\\Public Inspection.aprx"
 aprx = arcpy.mp.ArcGISProject(aprx_file)
-PublicInspectionTools.PublicInspectionSetupDataSource(fgdb_load, aprx)
+PublicInspectionTools.SetupDataSource(fgdb_load, aprx)

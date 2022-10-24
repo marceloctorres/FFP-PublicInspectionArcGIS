@@ -15,7 +15,7 @@ class PublicInspectionTools :
         ToolboxLogger.info(param0)
 
     @staticmethod
-    def PublicInspectionSetupDataSource(loadDataSourcePath = None, aprx = None) :
+    def SetupDataSource(loadDataSourcePath = None, aprx = None) :
         if loadDataSourcePath != None :
             tool = SetupDataSourcesTool(loadDataSourcePath, aprx)
             tool.execute()
