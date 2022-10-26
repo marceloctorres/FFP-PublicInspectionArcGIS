@@ -18,9 +18,7 @@ if os.path.exists(config_path) :
     project_folder = config.getConfigKey("project_folder")
     fgdb_load = os.path.join(data_folder, "Load_Data.gdb")
     aprx_file = os.path.join(project_folder, "Public Inspection.aprx")
-else :
-    fgdb_load = "D:\\FFP\\Load_Data.gdb"
-    aprx_file = "D:\\mtorres\\OneDrive - Esri NOSA\\Documentos\\ArcGIS\Projects\\Public Inspection\\Public Inspection.aprx"
 
-aprx = arcpy.mp.ArcGISProject(aprx_file)
-PublicInspectionTools.SetupDataSource(fgdb_load, aprx)
+    aprx = arcpy.mp.ArcGISProject(aprx_file)
+    PublicInspectionTools.SetupDataSource(fgdb_load, aprx)
+

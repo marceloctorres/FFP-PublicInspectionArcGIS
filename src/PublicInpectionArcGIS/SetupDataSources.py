@@ -37,7 +37,7 @@ class SetupDataSourcesTool :
         arcpy.management.CreateFileGDB(self.folder, self.SURVEY_DATASET_NAME, "CURRENT")
         ToolboxLogger.info("Survey Dataset Created")
         arcpy.management.ImportXMLWorkspaceDocument(self.surveyDataSource, xml_path)
-        ToolboxLogger.info("Survey data Imported")
+        ToolboxLogger.info("Survey Data Imported")
 
         arcpy.management.Delete(xml_path)        
 
@@ -48,6 +48,19 @@ class SetupDataSourcesTool :
 
         shutil.copytree(self.loadDataSourcePath, self.surveyDataSource)
         ToolboxLogger.info("Survey Dataset Created")
+
+    @ToolboxLogger.log_method
+    def cleanInspectionMap(self) :
+        map = self.aprx.listMaps("Inspection")[0]
+
+        layers = [l for l in map.listLayers() if not l.isBasemapLayer]
+        for layer in layers :
+            map.removeLayer(layer)
+        
+        tables = map.listTables()
+        for table in tables :
+            map.removeTable(table)   
+        ToolboxLogger.info("Inspection Map Cleaned")     
 
     @ToolboxLogger.log_method
     def createInspectionDataSource(self) :
@@ -61,7 +74,7 @@ class SetupDataSourcesTool :
         xml_path = os.path.join(file_folder_path, self.PARCEL_XML_PATH)
 
         arcpy.management.ImportXMLWorkspaceDocument(self.inspectionDataSource, xml_path, "SCHEMA_ONLY")
-        ToolboxLogger.info("Inspection Parcel Fabric schema imported")
+        ToolboxLogger.info("Inspection Parcel Fabric Schema Imported")
     
     @ToolboxLogger.log_method
     def appendDataset(self, input_ds):
@@ -117,7 +130,7 @@ class SetupDataSourcesTool :
     @ToolboxLogger.log_method
     def createParcelRecords(self) : 
         in_parcel_features = os.path.join(self.inspectionDataSource, self.PARCEL_TYPE)
-        arcpy.parcel.CreateParcelRecords(in_parcel_features, self.PARCEL_RECORD_FIELD) 
+        arcpy.parcel.CreateParcelRecords(in_parcel_features, self.PARCEL_RECORD_FIELD, "","FIELD") 
         ToolboxLogger.info("Parcel Records Created")
 
     @ToolboxLogger.log_method
@@ -129,14 +142,6 @@ class SetupDataSourcesTool :
     @ToolboxLogger.log_method
     def createInspectionMap(self) :
         map = self.aprx.listMaps("Inspection")[0]
-
-        layers = [l for l in map.listLayers() if not l.isBasemapLayer]
-        for layer in layers :
-            map.removeLayer(layer)
-        
-        tables = map.listTables()
-        for table in tables :
-            map.removeTable(table)
 
         in_parcel_fabric_path = os.path.join(self.inspectionDataSource, self.PARCEL_FABRIC_PATH)
         map.addDataFromPath(in_parcel_fabric_path)
@@ -164,6 +169,7 @@ class SetupDataSourcesTool :
     @ToolboxLogger.log_method
     def execute(self) :
         self.createSurveyDataSource()
+        self.cleanInspectionMap()
         self.createInspectionDataSource()
         self.appendParcelData()
         self.createParcelRecords()
