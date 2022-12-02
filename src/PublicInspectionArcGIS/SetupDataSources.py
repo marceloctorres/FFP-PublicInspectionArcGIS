@@ -229,11 +229,11 @@ class SetupDataSourcesTool :
 
     @ToolboxLogger.log_method
     def execute(self) :
-        #self.createSurveyDataSource()
-        #self.cleanInspectionMap()
-        #self.createInspectionDataSource()
-        #self.appendParcelData()
+        self.createSurveyDataSource()
+        self.cleanInspectionMap()
+        self.createInspectionDataSource()
+        self.appendParcelData()
         self.fixRelationships()
-        #self.createParcelRecords()
-        #self.buildParcelFabric()
-        #self.createInspectionMap()
+        self.createParcelRecords()
+        self.buildParcelFabric()
+        self.createInspectionMap()
