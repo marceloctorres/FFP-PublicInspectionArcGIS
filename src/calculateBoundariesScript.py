@@ -6,6 +6,7 @@ from PublicInspectionArcGIS.Utils import CONFIG_PATH, STREAM_HANDLER, ToolboxLog
 from PublicInspectionArcGIS.ToolsLib import PublicInspectionTools
 
 CONFIG_PATH = "debug.json"
+INSPECTION_FGDB = "inspection.gdb"
 ToolboxLogger.initLogger(handler_type=STREAM_HANDLER)
 ToolboxLogger.setDebugLevel()
 
@@ -14,11 +15,5 @@ config_path = os.path.join(folder_path, CONFIG_PATH)
 
 if os.path.exists(config_path) :
     config = Configuration(config_path)
-    data_folder = config.getConfigKey("data_folder")
-    project_folder = config.getConfigKey("project_folder")
-    fgdb_load = os.path.join(data_folder, "dummydata_load.gdb")
-    aprx_file = os.path.join(project_folder, "Public Inspection.aprx")
-
-    aprx = arcpy.mp.ArcGISProject(aprx_file)
-    PublicInspectionTools.SetupDataSource(fgdb_load, aprx)
-
+    inspectionDataSource = os.path.join(config.getConfigKey('project_folder'), INSPECTION_FGDB)
+    PublicInspectionTools.CalculateBoundaries(inspectionDataSource)

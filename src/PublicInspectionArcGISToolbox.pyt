@@ -64,6 +64,6 @@ class SetupDataSourcesTool(object):
         loadDataSourcePath = parameters[self.Params["param0"]].valueAsText
         aprx = arcpy.mp.ArcGISProject("CURRENT")
         
-        PublicInspectionTools.PublicInspectionSetupDataSource(loadDataSourcePath=loadDataSourcePath, aprx=aprx)
+        PublicInspectionTools.SetupDataSource(loadDataSourcePath=loadDataSourcePath, aprx=aprx)
 
         return
