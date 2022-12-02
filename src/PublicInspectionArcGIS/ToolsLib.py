@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from PublicInpectionArcGIS.Utils import ToolboxLogger
-from PublicInpectionArcGIS.Utils import ARCGIS_HANDLER, STREAM_HANDLER
-from PublicInpectionArcGIS.SetupDataSources import SetupDataSourcesTool
+from PublicInspectionArcGIS.Utils import ToolboxLogger, ARCGIS_HANDLER, STREAM_HANDLER
+from PublicInspectionArcGIS.SetupDataSources import SetupDataSourcesTool
+from PublicInspectionArcGIS.CalculateBoundaries import CalculateBoundariesTool
 
 class PublicInspectionTools :
 
@@ -19,3 +19,8 @@ class PublicInspectionTools :
         if loadDataSourcePath != None :
             tool = SetupDataSourcesTool(loadDataSourcePath, aprx)
             tool.execute()
+
+    @staticmethod
+    def CalculateBoundaries(inspectionDataSourcePath) :
+        tool = CalculateBoundariesTool(inspectionDataSourcePath)
+        tool.execute()
