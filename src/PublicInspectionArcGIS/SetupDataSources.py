@@ -1,29 +1,32 @@
 import arcpy
 import shutil
 import os
-from PublicInspectionArcGIS.Utils import ToolboxLogger
+from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
 
 class SetupDataSourcesTool :
-    SURVEY_DATASET_NAME = "survey.gdb"
-    INSPECTION_DATASET_NAME = "inspection.gdb"
-    PARCEL_XML_PATH = "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.xml"
-    LOAD_XML_PATH = "XmlWorkspaceDocuments\\load.xml"
-    PARCEL_TYPE = "SpatialUnit"
-    PARCEL_RECORD_FIELD = "legal_id"
-    PARCEL_FABRIC_PATH = "Parcel\PublicInspection"
-    PARCEL_DATASET = "Parcel"
-    
-    def __init__(self, loadDataSourcePath, aprx) :
+    def __init__(self, configuration, aprx, loadDataSourcePath) :
+        self.TEMPORAL_ID_PATTERN = "temp_id_{}"
         self.aprx = aprx
         self.loadDataSourcePath = loadDataSourcePath
         self.folder = self.aprx.homeFolder
+
+        self.SURVEY_DATASET_NAME = configuration.getConfigKey("SURVEY_DATASET_NAME")
+        self.INSPECTION_DATASET_NAME = configuration.getConfigKey("INSPECTION_DATASET_NAME")
+        self.PARCEL_XML_PATH = configuration.getConfigKey("PARCEL_XML_PATH")
+        self.LOAD_XML_PATH = configuration.getConfigKey("LOAD_XML_PATH")
+        self.PARCEL_TYPE = configuration.getConfigKey("PARCEL_TYPE")
+        self.PARCEL_RECORD_FIELD = configuration.getConfigKey("PARCEL_RECORD_FIELD")
+        self.PARCEL_FABRIC_PATH = configuration.getConfigKey("PARCEL_FABRIC_PATH")
+        self.PARCEL_DATASET = configuration.getConfigKey("PARCEL_DATASET")
+
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.surveyDataSource = os.path.join(self.folder, self.SURVEY_DATASET_NAME)
-        ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
         ToolboxLogger.info("Load Data Source:       {}".format(self.loadDataSourcePath))
+        ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
         ToolboxLogger.info("Survey Data Source:     {}".format(self.surveyDataSource))
         ToolboxLogger.info("Inspection Data Source: {}".format(self.inspectionDataSource))
+        ToolboxLogger.info("xml workspace File:     {}".format(self.PARCEL_XML_PATH))
     
     @ToolboxLogger.log_method
     def createSurveyDataSource(self):
@@ -88,26 +91,20 @@ class SetupDataSourcesTool :
 
         result_in = arcpy.management.GetCount(input_ds_path)
 
-        if result_in != 0 :
+        if result_in[0] != '0' :
             input_ds_fields = arcpy.ListFields(input_ds_path)
             output_ds_fields = arcpy.ListFields(output_ds_path)
 
-            fix_rs_field_name = "{}_id".format(input_ds.lower())
+            fix_rs_field_name = self.TEMPORAL_ID_PATTERN.format(input_ds.lower())
             nf = [x for x in output_ds_fields if x.name.lower() == fix_rs_field_name]
             if(len(nf) == 0):
-                ToolboxLogger.debug("Nooo! Existe el campo {}".format(fix_rs_field_name))
                 out_table = arcpy.management.AddField(output_ds_path, fix_rs_field_name, "GUID", field_alias= "{} ID".format(input_ds) , field_is_nullable = "NULLABLE")
                 arcpy.management.AddIndex(output_ds_path, [fix_rs_field_name], "GUID_{}".format(fix_rs_field_name))
+                ToolboxLogger.debug("Temp '{}' field added.".format(fix_rs_field_name))
 
-                ToolboxLogger.debug("Nueva tabla: {}".format(out_table))
                 output_ds_fields = arcpy.ListFields(output_ds_path)
-            else:
-                print("Existe el campo {}".format(fix_rs_field_name))
 
-            field_names = [f.name for f in output_ds_fields]
             fix_rs_field = [f for f in output_ds_fields if f.name == fix_rs_field_name][0]
-            ToolboxLogger.debug("Campos de salida {}".format(field_names))
-
             fieldMappings = arcpy.FieldMappings()
             fieldMappings.addTable(output_ds_path)
 
@@ -125,55 +122,78 @@ class SetupDataSourcesTool :
                     if input_field :
                         fm = arcpy.FieldMap()
                         fm.addInputField(input_ds_path, input_field.name)
-
-                        ToolboxLogger.info("Input Field: {} Output Field: {}".format(input_field.name, output_field.name))
                         fm.outputField = output_field
                         fieldMappings.addFieldMap(fm)
 
             output = arcpy.management.Append(input_ds_path, output_ds_path, "NO_TEST", fieldMappings)
             result_out = arcpy.management.GetCount(output)
         else :
-            result_out = 0
+            result_out = []
+            result_out.append('0')
 
         ToolboxLogger.info("Input Count: {} Output Count: {}".format(result_in[0], result_out[0]))
         ToolboxLogger.info("...'{}' Data Appended".format(input_ds))
 
+    @ToolboxLogger.log_method
     def fixDatasetRelationships(self, dataset) :
         da = ArcpyDataAccess(self.inspectionDataSource)
-        dataset_relationship_classes = [x for x in arcpy.Describe(dataset).children if x.datatype == "RelationshipClass"]
-        for relationship_class in dataset_relationship_classes:
+        dataset_relationship_classes = [x for x in arcpy.Describe(dataset).children if x.datatype == "RelationshipClass" and x.cardinality != "ManyToMany"]
+        relationship_classes_fixed = []
 
+        for relationship_class in dataset_relationship_classes:
             origin_classnames = [x for x in relationship_class.originClassNames if not x.lower().__contains__("publicinspection")]
             origin_classname = origin_classnames[0] if origin_classnames else None
             if origin_classname :
                 origin_classname_path = os.path.join(dataset, origin_classname)
-                ToolboxLogger.debug("rsc = {} ---> ocs = {}".format(relationship_class.name, origin_classname))
-
                 origin_classname_fields = arcpy.ListFields(origin_classname_path)
-                fix_rs_fields = [f for f in origin_classname_fields if f.name == "{}_id".format(origin_classname.lower())]
+                fix_rs_fields = [f for f in origin_classname_fields if f.name == self.TEMPORAL_ID_PATTERN.format(origin_classname.lower())]
                 fix_rs_field = fix_rs_fields[0] if fix_rs_fields else None
                 if fix_rs_field :
-                    origin_registers = da.query(origin_classname, "*")
-                    destination_class_names = relationship_class.destinationClassNames
+                    ToolboxLogger.debug("Origin Classname '{}'.".format(origin_classname))
+                    destination_classnames = relationship_class.destinationClassNames
                     origin_pk_name =[k[0] for k in relationship_class.originClassKeys if k[1] == "OriginPrimary"][0]
                     origin_fk_name =[k[0] for k in relationship_class.originClassKeys if k[1] == "OriginForeign"][0]
-                    ToolboxLogger.debug("origin_pk_name = {}".format(origin_pk_name))
-                    ToolboxLogger.debug("origin_fk_name = {}".format(origin_fk_name))
+                    origin_registers = da.query(origin_classname, [origin_pk_name, fix_rs_field.name])
+                    ToolboxLogger.debug("Origin register count = {}.".format(len(origin_registers)))
+                    for destination_classname in destination_classnames:
+                        ToolboxLogger.debug("Destination Classname '{}'.".format(destination_classname))
+                        destination_registers = da.query(destination_classname, [origin_fk_name])
+                        ToolboxLogger.debug("Destination register count = {}.".format(len(destination_registers)))
+                        if len(destination_registers) > 0:
+                            relationship_classes_fixed.append(relationship_class)
+                            ToolboxLogger.debug("Fixing Relationship '{}'.".format(relationship_class.name))
 
-                    ToolboxLogger.debug("destination_class_names = {}".format(destination_class_names))
-                    for register in origin_registers:
-                        fix_rs_value = register[fix_rs_field.name]
-                        for destination_classname in destination_class_names:
-                            ToolboxLogger.debug("fix_rs_value = {}".format(fix_rs_value))
-                            ToolboxLogger.debug("destination_classname = {}".format(destination_classname))
-                            da.update(destination_classname, [origin_fk_name], [register[origin_pk_name]], "{} = '{}'".format(origin_fk_name, fix_rs_value))
+                            fixed_destination_records = 0 
+                            destination_records = 0
+                            for register in origin_registers:
+                                fix_rs_value = register[fix_rs_field.name]
+                                updated_registers_old = da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, fix_rs_value))
+                                da.update(destination_classname, [origin_fk_name], [register[origin_pk_name]], "{} = '{}'".format(origin_fk_name, fix_rs_value))
+                                updated_registers = da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, register[origin_pk_name]))
+                                fixed_destination_records += len(updated_registers)
+                                destination_records += len(updated_registers_old)
+                            ToolboxLogger.debug("Destination fixed registers count '{}'.".format(destination_records))
+                            ToolboxLogger.debug("Destination fixed registers count '{}'.".format(fixed_destination_records))
+
+        for relationship_class in relationship_classes_fixed:
+            ToolboxLogger.debug("Relationship '{}' fixed.".format(relationship_class.name))
+            origin_classnames = [x for x in relationship_class.originClassNames if not x.lower().__contains__("publicinspection")]
+            origin_classname = origin_classnames[0] if origin_classnames else None
+            if origin_classname :
+                origin_classname_path = os.path.join(dataset, origin_classname)
+
+                origin_classname_fields = arcpy.ListFields(origin_classname_path)
+                fix_rs_fields = [f for f in origin_classname_fields if f.name == self.TEMPORAL_ID_PATTERN.format(origin_classname.lower())]
+                fix_rs_field = fix_rs_fields[0] if fix_rs_fields else None
                 if fix_rs_field :
                     arcpy.management.DeleteField(origin_classname_path, fix_rs_field.name)
+                    ToolboxLogger.debug("Temporal '{}' field deleted.".format(fix_rs_field.name))
 
+    @ToolboxLogger.log_method
     def fixRelationships(self) :
-        self.fixDatasetRelationships(self.inspectionDataSource)
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "Parcel"))
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "ReferenceObjects"))
+        self.fixDatasetRelationships(self.inspectionDataSource)
 
     @ToolboxLogger.log_method
     def appendParcelData(self) :
@@ -225,7 +245,10 @@ class SetupDataSourcesTool :
         if self.aprx.activeMap != map:
             map.openView()
 
-        self.aprx.save()
+        try :
+            self.aprx.save()
+        except Exception as e :
+            ToolboxLogger.error(e)
 
     @ToolboxLogger.log_method
     def execute(self) :

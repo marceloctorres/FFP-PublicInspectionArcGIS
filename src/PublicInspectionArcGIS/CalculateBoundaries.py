@@ -5,50 +5,48 @@ from PublicInspectionArcGIS.Utils import ToolboxLogger
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
 
 class CalculateBoundariesTool:
-    SURVEY_DATASET_NAME = "survey.gdb"
-    INSPECTION_DATASET_NAME = "load.gdb"
-    PARCEL_XML_PATH = "XmlWorkspaceDocuments\\FFP-ParcelFabric.xml"
-    LOAD_XML_PATH = "XmlWorkspaceDocuments\\load.xml"
-    PARCEL_TYPE = "SpatialUnit"
-    PARCEL_RECORD_FIELD = "legal_id"
-    PARCEL_FABRIC_PATH = "Parcel\PublicInspection"
-    PARCEL_DATASET = "Parcel"
-    GEOMETRY_FIELD = "SHAPE@"
+    def __init__(self, configuration, aprx) :
+        self.aprx = aprx
+        self.folder = self.aprx.homeFolder
+        self.INSPECTION_DATASET_NAME = configuration.getConfigKey("INSPECTION_DATASET_NAME")
+        self.GEOMETRY_FIELD = configuration.getConfigKey("GEOMETRY_FIELD")
 
-    SPATIAL_UNIT_NAME = PARCEL_TYPE
-    SPATIAL_UNIT_ID_FIELD = "GlobalID"
-    SPATIAL_UNIT_NAME_FIELD = "spatialunit_name"
-    SPATIAL_UNIT_BOUNDARY_NAME = "SpatialUnit_Boundary"
-    SPATIAL_UNIT_FK_FIELD ="spatialunit_id"
-    
-    BOUNDARY_NAME = "Boundary"
-    BOUNDARY_ID_FIELD = "GlobalID"
-    BOUNDARY_DESCRIPTION_FIELD = "description"
-    BOUNDARY_FK_FIELD = "boundary_id"
+        self.SPATIAL_UNIT_NAME = configuration.getConfigKey("SPATIAL_UNIT_NAME")
+        self.SPATIAL_UNIT_ID_FIELD = configuration.getConfigKey("SPATIAL_UNIT_ID_FIELD")
+        self.SPATIAL_UNIT_NAME_FIELD = configuration.getConfigKey("SPATIAL_UNIT_NAME_FIELD")
+        self.SPATIAL_UNIT_BOUNDARY_NAME = configuration.getConfigKey("SPATIAL_UNIT_BOUNDARY_NAME")
+        self.SPATIAL_UNIT_FK_FIELD = configuration.getConfigKey("SPATIAL_UNIT_FK_FIELD")
+        
+        self.BOUNDARY_NAME = configuration.getConfigKey("BOUNDARY_NAME")
+        self.BOUNDARY_ID_FIELD = configuration.getConfigKey("BOUNDARY_ID_FIELD")
+        self.BOUNDARY_DESCRIPTION_FIELD = configuration.getConfigKey("BOUNDARY_DESCRIPTION_FIELD")
+        self.BOUNDARY_FK_FIELD = configuration.getConfigKey("BOUNDARY_FK_FIELD")
 
-    RIGTH_NAME = "Right"
-    RIGHT_ID_FIELD = "GlobalID"
-    RIGHT_FK_FIELD = "right_id"
+        self.RIGTH_NAME = configuration.getConfigKey("RIGTH_NAME")
+        self.RIGHT_ID_FIELD = configuration.getConfigKey("RIGHT_ID_FIELD")
+        self.RIGHT_FK_FIELD = configuration.getConfigKey("RIGHT_FK_FIELD")
 
-    PARTY_NAME = "Party"
-    PARTY_ID_FIELD = "GlobalID"
-    PARTY_FK_FIELD = "party_id"
+        self.PARTY_NAME = configuration.getConfigKey("PARTY_NAME")
+        self.PARTY_ID_FIELD = configuration.getConfigKey("PARTY_ID_FIELD")
+        self.PARTY_FK_FIELD = configuration.getConfigKey("PARTY_FK_FIELD")
 
-    APPROVAL_NAME = "Approval"
-    APPROVAL_ID_FIELD = "GlobalID"
-    APPROVAL_FK_FIELD = "approval_id"
+        self.APPROVAL_NAME = configuration.getConfigKey("APPROVAL_NAME")
+        self.APPROVAL_ID_FIELD = configuration.getConfigKey("APPROVAL_ID_FIELD")
+        self.APPROVAL_FK_FIELD = configuration.getConfigKey("APPROVAL_FK_FIELD")
 
-    APPROVAL_SIGNATURE_NAME = "ApprovalSignature"
-    APPROVAL_SIGNATURE_ID_FIELD = "GlobalID"
+        self.APPROVAL_SIGNATURE_NAME =configuration.getConfigKey("APPROVAL_SIGNATURE_NAME")
+        self.APPROVAL_SIGNATURE_ID_FIELD = configuration.getConfigKey("APPROVAL_SIGNATURE_ID_FIELD")
 
-    def __init__(self, inspectionDataSourcePath) :
-        self.inspectionDataSource = inspectionDataSourcePath
-        ToolboxLogger.info("Inspection Data Source: {}".format(self.inspectionDataSource))
+        self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.da = ArcpyDataAccess(self.inspectionDataSource)
+
+        ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
+        ToolboxLogger.info("Inspection Data Source: {}".format(self.inspectionDataSource))
+
     
     @ToolboxLogger.log_method
     def getBoundaries(self) :
-        spatial_units = self.da.query(self.PARCEL_TYPE, geometry=True)
+        spatial_units = self.da.query(self.SPATIAL_UNIT_NAME, geometry=True)
         ToolboxLogger.info("SpatialUnits count {}".format(len(spatial_units)))
 
         while(len(spatial_units) > 0) :
@@ -96,7 +94,7 @@ class CalculateBoundariesTool:
                 intersect = geometry0_boundary.difference(boundary_union)
                 if intersect.length > 0 :
                     boundary = self.addBoundary(intersect, "{}".format(su0[self.SPATIAL_UNIT_NAME_FIELD]))
-                    self.addSpatialUnitBoundary/(su0, boundary)
+                    self.addSpatialUnitBoundary(su0, boundary)
                     self.addApprovals(su0, boundary)
     
     @ToolboxLogger.log_method

@@ -23,7 +23,6 @@ class ArcpyDataAccess(DataAccess) :
         if index > -1:
             row[index] = value
 
-    @ToolboxLogger.log_method
     def _search_da(self, origin_table, fields, filter=None, geometry=False) :
         origin_table = os.path.join(self.workspace_path, origin_table)
         if(fields == "*" and geometry) :
@@ -50,11 +49,9 @@ class ArcpyDataAccess(DataAccess) :
         except Exception as e:
             ToolboxLogger.debug("ERROR: ---->{}".format(e))
 
-    @ToolboxLogger.log_method
     def query(self, table, fields = "*", filter = None, geometry = False) :
         return self._search_da(table, fields, filter, geometry)
 
-    @ToolboxLogger.log_method
     def add(self, table, fields, values) :
         origin_table = os.path.join(self.workspace_path, table)
         table_fields = arcpy.ListFields(origin_table)
@@ -87,7 +84,6 @@ class ArcpyDataAccess(DataAccess) :
         register = self.query(table, "*", "{} = {}".format(oid_field, inserted_id[0]))
         return register
 
-    @ToolboxLogger.log_method            
     def update(self, table, fields, values, filter = None) :
         origin_table = os.path.join(self.workspace_path, table)
 
@@ -107,5 +103,4 @@ class ArcpyDataAccess(DataAccess) :
             cursor.updateRow(row)
 
         edit.stopOperation()
-        edit.stopEditing(save_changes=True)        
-
+        edit.stopEditing(save_changes=True)

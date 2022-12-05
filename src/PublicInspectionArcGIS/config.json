@@ -1,0 +1,37 @@
+{
+    "SURVEY_DATASET_NAME" : "survey.gdb",
+    "INSPECTION_DATASET_NAME" : "inspection.gdb",
+    "PARCEL_XML_PATH" : "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.1.xml",
+    "LOAD_XML_PATH" : "XmlWorkspaceDocuments\\load.xml",
+    "PARCEL_TYPE" : "SpatialUnit",
+    "PARCEL_RECORD_FIELD" : "legal_id",
+    "PARCEL_FABRIC_PATH" : "Parcel\\PublicInspection",
+    "PARCEL_DATASET" : "Parcel",
+    "GEOMETRY_FIELD" : "SHAPE@",
+
+    "SPATIAL_UNIT_NAME" : "SpatialUnit",
+    "SPATIAL_UNIT_ID_FIELD" : "GlobalID",
+    "SPATIAL_UNIT_NAME_FIELD" : "spatialunit_name",
+    "SPATIAL_UNIT_BOUNDARY_NAME" : "SpatialUnit_Boundary",
+    "SPATIAL_UNIT_FK_FIELD" :"spatialunit_id",
+    
+    "BOUNDARY_NAME" : "Boundary",
+    "BOUNDARY_ID_FIELD" : "GlobalID",
+    "BOUNDARY_DESCRIPTION_FIELD" : "description",
+    "BOUNDARY_FK_FIELD" : "boundary_id",
+
+    "RIGTH_NAME" : "Right",
+    "RIGHT_ID_FIELD" : "GlobalID",
+    "RIGHT_FK_FIELD": "right_id",
+
+    "PARTY_NAME" : "Party",
+    "PARTY_ID_FIELD" : "GlobalID",
+    "PARTY_FK_FIELD" : "party_id",
+
+    "APPROVAL_NAME" : "Approval",
+    "APPROVAL_ID_FIELD" : "GlobalID",
+    "APPROVAL_FK_FIELD" : "approval_id",
+
+    "APPROVAL_SIGNATURE_NAME" : "ApprovalSignature",
+    "APPROVAL_SIGNATURE_ID_FIELD" : "GlobalID"
+}
