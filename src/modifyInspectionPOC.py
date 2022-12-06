@@ -11,7 +11,30 @@ arcpy.env.workspace = workspace
 ToolboxLogger.initLogger(handler_type=STREAM_HANDLER)
 ToolboxLogger.setDebugLevel()
 
+def populate_catalog_list(workspace):
+    catalog_list = [] 
+
+    for d in arcpy.Describe(workspace).children :
+        if d.datatype == "FeatureDataset" :
+            catalog_sub_list = populate_catalog_list(d.catalogPath)
+            catalog_list += catalog_sub_list
+        else :
+            catalog_item = {}
+            catalog_item["name"] = d.name 
+            catalog_item["path"] = d.catalogPath
+            catalog_list.append(catalog_item)
+    return catalog_list
+
+def find(catalog_list, name) :
+    items = [x for x in catalog_list if x["name"] == name]
+    item = items[0] if items else None
+    return item
+
 def execute(workspace):
+    catalog_list = populate_catalog_list(workspace)
+    path = find(catalog_list, "SpatialUnit")
+    print(path)
+
     rscs = [x for x in arcpy.Describe(workspace).children if x.datatype == "RelationshipClass" and not x.isAttachmentRelationship]
     ToolboxLogger.debug("rscs = {}".format(len(rscs)))
     for rsc in rscs:

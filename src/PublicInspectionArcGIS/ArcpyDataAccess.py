@@ -10,6 +10,25 @@ class ArcpyDataAccess(DataAccess) :
     def __init__(self, workspace_path) :
         DataAccess.__init__(self)
         self.workspace_path = workspace_path
+        self.__catalog_list = []
+        self.__populate_catalog_list(self.workspace_path)
+    
+    def __populate_catalog_list(self, workspace) :
+        for d in arcpy.Describe(workspace).children :
+            if d.datatype == "FeatureDataset" :
+                catalog_sub_list = self.__populate_catalog_list(d.catalogPath)
+                self.__catalog_list += catalog_sub_list
+            else :
+                catalog_item = {}
+                catalog_item["name"] = d.name 
+                catalog_item["path"] = d.catalogPath
+                self.__catalog_list.append(catalog_item)
+        return self.__catalog_list
+
+    def findTablePath(self, name) :
+        items = [x for x in self.__catalog_list if x["name"] == name]
+        item = items[0] if items else None
+        return item["path"]
 
     def _getValue(self, cursor, row, fieldName):
         fields = tuple(f.lower() for f in cursor.fields)
@@ -23,15 +42,15 @@ class ArcpyDataAccess(DataAccess) :
         if index > -1:
             row[index] = value
 
-    def _search_da(self, origin_table, fields, filter=None, geometry=False) :
-        origin_table = os.path.join(self.workspace_path, origin_table)
+    def _search_da(self, table, fields, filter=None, geometry=False) :
+        table_path = self.findTablePath(table)
         if(fields == "*" and geometry) :
             fields = ["*", "SHAPE@"]
         try:
             if filter == None:
-                origin_cursor = da.SearchCursor(origin_table, fields)
+                origin_cursor = da.SearchCursor(table_path, fields)
             else:
-                origin_cursor = da.SearchCursor(origin_table, fields, filter)
+                origin_cursor = da.SearchCursor(table_path, fields, filter)
 
             output_registers = []
             fields = tuple(f for f in origin_cursor.fields)
@@ -53,8 +72,8 @@ class ArcpyDataAccess(DataAccess) :
         return self._search_da(table, fields, filter, geometry)
 
     def add(self, table, fields, values) :
-        origin_table = os.path.join(self.workspace_path, table)
-        table_fields = arcpy.ListFields(origin_table)
+        table_path = self.findTablePath(table)
+        table_fields = arcpy.ListFields(table_path)
         oid_field = [f.name for f in table_fields if f.type == "OID"][0]
         domain_fields = [f for f in table_fields if f.domain != '']
         for domain_field in domain_fields:
@@ -70,7 +89,7 @@ class ArcpyDataAccess(DataAccess) :
         edit.startEditing(with_undo=True, multiuser_mode=True)
         edit.startOperation()
 
-        cursor = da.InsertCursor(origin_table, fields)
+        cursor = da.InsertCursor(table_path, fields)
 
         inserted_id = []
         for row in values:
@@ -85,22 +104,42 @@ class ArcpyDataAccess(DataAccess) :
         return register
 
     def update(self, table, fields, values, filter = None) :
-        origin_table = os.path.join(self.workspace_path, table)
+        table_path = self.findTablePath(table)
 
         edit = da.Editor(self.workspace_path)
         edit.startEditing(with_undo=True, multiuser_mode=True)
         edit.startOperation()
 
         if filter:
-            cursor = da.UpdateCursor(origin_table, fields, filter)
+            cursor = da.UpdateCursor(table_path, fields, filter)
         else :
-            cursor = da.UpdateCursor(origin_table, fields)
+            cursor = da.UpdateCursor(table_path, fields)
         
         for row in cursor:
             for field in fields:
                 index = fields.index(field)
                 row[index] =values[index]
             cursor.updateRow(row)
+
+        edit.stopOperation()
+        edit.stopEditing(save_changes=True)
+
+    def delete(self, table, fields = None, filter = None):
+        table_path = self.findTablePath(table)
+        if fields == None :
+            fields = "*"
+
+        edit = da.Editor(self.workspace_path)
+        edit.startEditing(with_undo=True, multiuser_mode=True)
+        edit.startOperation()
+
+        if filter:
+            cursor = da.UpdateCursor(table_path, fields, filter)
+        else :
+            cursor = da.UpdateCursor(table_path, fields)
+        
+        for row in cursor:
+            cursor.deleteRow()
 
         edit.stopOperation()
         edit.stopEditing(save_changes=True)

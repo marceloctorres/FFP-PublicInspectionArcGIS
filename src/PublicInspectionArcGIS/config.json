@@ -1,7 +1,7 @@
 {
     "SURVEY_DATASET_NAME" : "survey.gdb",
     "INSPECTION_DATASET_NAME" : "inspection.gdb",
-    "PARCEL_XML_PATH" : "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.1.xml",
+    "PARCEL_XML_PATH" : "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.2.xml",
     "LOAD_XML_PATH" : "XmlWorkspaceDocuments\\load.xml",
     "PARCEL_TYPE" : "SpatialUnit",
     "PARCEL_RECORD_FIELD" : "legal_id",
