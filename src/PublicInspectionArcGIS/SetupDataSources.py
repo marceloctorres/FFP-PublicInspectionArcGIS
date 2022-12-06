@@ -166,20 +166,20 @@ class SetupDataSourcesTool :
                         ToolboxLogger.debug("Destination register count = {}.".format(len(destination_registers)))
                         if len(destination_registers) > 0:
 
-                            fixed_destination_records = 0 
-                            destination_records = 0
+                            #fixed_destination_records = 0 
+                            #destination_records = 0
 
                             for register in origin_registers:
                                 fix_rs_value = register[fix_rs_field.name]
-                                updated_registers_old = self.da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, fix_rs_value))
+                                #updated_registers_old = self.da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, fix_rs_value))
 
                                 self.da.update(destination_classname, [origin_fk_name], [register[origin_pk_name]], "{} = '{}'".format(origin_fk_name, fix_rs_value))
-                                updated_registers = self.da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, register[origin_pk_name]))
+                                #updated_registers = self.da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, register[origin_pk_name]))
 
-                                fixed_destination_records += len(updated_registers)
-                                destination_records += len(updated_registers_old)
-                            ToolboxLogger.debug("Destination fixing register count '{}'.".format(destination_records))
-                            ToolboxLogger.debug("Destination fixed register count '{}'.".format(fixed_destination_records))
+                                #fixed_destination_records += len(updated_registers)
+                                #destination_records += len(updated_registers_old)
+                            #ToolboxLogger.debug("Destination fixing register count '{}'.".format(destination_records))
+                            #ToolboxLogger.debug("Destination fixed register count '{}'.".format(fixed_destination_records))
     
     @ToolboxLogger.log_method           
     def cleanFixRelationshipsData(self, dataset) :
@@ -280,8 +280,8 @@ class SetupDataSourcesTool :
 
     @ToolboxLogger.log_method
     def execute(self) :
-        #self.createSurveyDataSource()
-        #self.cleanInspectionMap()
+        self.createSurveyDataSource()
+        self.cleanInspectionMap()
         self.createInspectionDataSource()
         self.appendParcelData()
         self.fixRelationships()
