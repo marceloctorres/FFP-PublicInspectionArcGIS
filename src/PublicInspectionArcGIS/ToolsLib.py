@@ -3,6 +3,7 @@ import os
 from PublicInspectionArcGIS.Utils import ToolboxLogger, ARCGIS_HANDLER, STREAM_HANDLER, Configuration
 from PublicInspectionArcGIS.SetupDataSources import SetupDataSourcesTool
 from PublicInspectionArcGIS.CalculateBoundaries import CalculateBoundariesTool
+from PublicInspectionArcGIS.CaptureSignature import CaptureSignaturesTool
 
 class PublicInspectionTools :
 
@@ -34,3 +35,11 @@ class PublicInspectionTools :
             configuration = PublicInspectionTools.getConfiguration()
             tool = CalculateBoundariesTool(configuration=configuration, aprx=aprx)
             tool.execute()
+
+    @staticmethod
+    def CaptureSignatures(aprx = None) :
+        if aprx != None :
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = CaptureSignaturesTool(configuration=configuration, aprx=aprx)
+            tool.execute()
+    

@@ -1,7 +1,8 @@
 import arcpy
 import shutil
 import os
-from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
+
+from PublicInspectionArcGIS.Utils import ToolboxLogger
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
 
 class SetupDataSourcesTool :
@@ -21,6 +22,7 @@ class SetupDataSourcesTool :
         self.PARCEL_RECORD_FIELD = configuration.getConfigKey("PARCEL_RECORD_FIELD")
         self.PARCEL_FABRIC_PATH = configuration.getConfigKey("PARCEL_FABRIC_PATH")
         self.PARCEL_DATASET = configuration.getConfigKey("PARCEL_DATASET")
+        self.INSPECTION_MAP = configuration.getConfigKey("INSPECTION_MAP")
 
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.surveyDataSource = os.path.join(self.folder, self.SURVEY_DATASET_NAME)
@@ -45,7 +47,7 @@ class SetupDataSourcesTool :
         arcpy.management.ImportXMLWorkspaceDocument(self.surveyDataSource, xml_path)
         ToolboxLogger.info("Survey Data Imported")
 
-        arcpy.management.Delete(xml_path)        
+        arcpy.management.Delete(xml_path)    
 
     @ToolboxLogger.log_method
     def copySurveyDataSource(self) :
@@ -250,7 +252,7 @@ class SetupDataSourcesTool :
     
     @ToolboxLogger.log_method
     def createInspectionMap(self) :
-        map = self.aprx.listMaps("Inspection")[0]
+        map = self.aprx.listMaps(self.INSPECTION_MAP)[0]
 
         in_parcel_fabric_path = os.path.join(self.inspectionDataSource, self.PARCEL_FABRIC_PATH)
         map.addDataFromPath(in_parcel_fabric_path)
@@ -267,7 +269,6 @@ class SetupDataSourcesTool :
             if exist :
                 ToolboxLogger.info("Apply Symbology From Layer: {}.lyrx".format(layer.longName))
                 arcpy.management.ApplySymbologyFromLayer(layer, layer_file_path, None, "DEFAULT")
-
                 layer.updateConnectionProperties(layer.connectionProperties, layer.connectionProperties)
         
         if self.aprx.activeMap != map:
@@ -278,13 +279,25 @@ class SetupDataSourcesTool :
         except Exception as e :
             ToolboxLogger.error(e)
 
+    #Validate load data source
+    def validateLoadDataSource(self) :
+        if not self.loadDataSourcePath :
+            raise Exception("Load Data Source is not set.")
+
+        if not os.path.exists(self.loadDataSourcePath) :
+            raise Exception("Load Data Source does not exist.")
+
     @ToolboxLogger.log_method
     def execute(self) :
-        self.createSurveyDataSource()
-        self.cleanInspectionMap()
-        self.createInspectionDataSource()
-        self.appendParcelData()
-        self.fixRelationships()
-        self.createParcelRecords()
-        self.buildParcelFabric()
-        self.createInspectionMap()
+        try:
+            self.validateLoadDataSource()
+            self.createSurveyDataSource()
+            self.cleanInspectionMap()
+            self.createInspectionDataSource()
+            self.appendParcelData()
+            self.fixRelationships()
+            self.createParcelRecords()
+            self.buildParcelFabric()
+            self.createInspectionMap()
+        except Exception as e :
+            ToolboxLogger.error(e.message)

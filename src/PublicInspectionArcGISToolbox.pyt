@@ -14,7 +14,7 @@ class Toolbox(object):
         self.alias = "ArcGISPublicInspectionToolbox"
         
         # List of tool classes associated with this toolbox
-        self.tools = [SetupDataSourcesTool]
+        self.tools = [SetupDataSourcesTool, CalculateBoundariesTool, CaptureSignatureTool]
 
 class SetupDataSourcesTool(object):
     def __init__(self):
@@ -66,15 +66,14 @@ class SetupDataSourcesTool(object):
         PublicInspectionTools.SetupDataSource(loadDataSourcePath=loadDataSourcePath, aprx=aprx)
         return
 
-class SetupDataSourcesTool(object):
+class CalculateBoundariesTool(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "Setup Datasources"
-        self.description = "Create FGDBs to make Public Inspection"
-        self.alias = "SetupDataSourcesTool"
+        self.label = "Calculate Boundaries"
+        self.description = "Calculate Boundaries to add to Public Inspection"
+        self.alias = "CalculateBoundariesTool"
         
         self.canRunInBackground = True
-        self.Params = {"param0": 0}
         ToolboxLogger.initLogger(handler_type = STREAM_HANDLER | ARCGIS_HANDLER )
         ToolboxLogger.setInfoLevel()
 
@@ -104,3 +103,41 @@ class SetupDataSourcesTool(object):
         PublicInspectionTools.CalculateBoundaries(aprx=aprx)
 
         return
+
+class CaptureSignatureTool(object):
+    def __init__(self):
+        """Define the tool (tool name is the name of the class)."""
+        self.label = "Capture Signature"
+        self.description = "Capture Party Signature to express agreement to Public Inspection"
+        self.alias = "CaptureSignatureTool"
+        
+        self.canRunInBackground = True
+        ToolboxLogger.initLogger(handler_type = STREAM_HANDLER | ARCGIS_HANDLER )
+        ToolboxLogger.setInfoLevel()
+
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        params = []
+        return params
+
+    def isLicensed(self):
+        """Set whether tool is licensed to execute."""
+        return True
+
+    def updateParameters(self, parameters):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+        return
+
+    def updateMessages(self, parameters):
+        """Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation."""
+        return
+
+    def execute(self, parameters, messages):
+        """The source code of the tool."""
+        aprx = arcpy.mp.ArcGISProject("CURRENT")
+        PublicInspectionTools.CaptureSignatures(aprx=aprx)
+
+        return        
