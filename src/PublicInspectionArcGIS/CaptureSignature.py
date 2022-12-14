@@ -24,9 +24,15 @@ class CaptureSignaturesTool :
 
         self.APPROVAL_SIGNATURE_NAME =configuration.getConfigKey("APPROVAL_SIGNATURE_NAME")
         self.APPROVAL_SIGNATURE_ID_FIELD = configuration.getConfigKey("APPROVAL_SIGNATURE_ID_FIELD")
+        self.SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH")
+        self.SIGNATURE_CAPTURE_TOOL_COMMAND = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_COMMAND")
+        self.SIGNATURES_RELATIVE_PATH = configuration.getConfigKey("SIGNATURES_RELATIVE_PATH")
 
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.da = ArcpyDataAccess(self.inspectionDataSource)
+
+        self.signatureCaptureToolPath = os.path.join(self.folder, self.SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH)
+        self.signaturesPath = os.path.join(self.folder, self.SIGNATURES_RELATIVE_PATH)
 
         self.matchtableName = "MatchTable"
         self.matchField = "MatchID"
@@ -75,11 +81,11 @@ class CaptureSignaturesTool :
             self.guid = parties[0][self.PARTY_ID_FIELD]
             ToolboxLogger.info("Party ID: {}".format(self.guid))     
 
-            command = "D:\\FFP\\FFP-SignatureCapture\\FFP.SignatureCapture.exe -fp \"{}\\{}.png\"".format(self.folder, self.guid.lower())
+            command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, self.guid.lower())
             output = os.popen(command)
             output.read()
 
-            signatureFilePath = os.path.join(self.folder, "{}.png".format(self.guid.lower()))
+            signatureFilePath = os.path.join(self.signaturesPath, "{}.png".format(self.guid.lower()))
             if os.path.exists(signatureFilePath) :
                 ToolboxLogger.info("Signature File: {}".format(signatureFilePath))
 

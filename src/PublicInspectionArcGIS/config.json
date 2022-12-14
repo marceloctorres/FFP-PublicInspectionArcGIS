@@ -34,5 +34,9 @@
     "APPROVAL_FK_FIELD" : "approval_id",
 
     "APPROVAL_SIGNATURE_NAME" : "ApprovalSignature",
-    "APPROVAL_SIGNATURE_ID_FIELD" : "GlobalID"
+    "APPROVAL_SIGNATURE_ID_FIELD" : "GlobalID",
+
+    "SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH" : "SignatureCaptureTool\\FFP.SignatureCapture.exe",
+    "SIGNATURE_CAPTURE_TOOL_COMMAND" : "-fp",
+    "SIGNATURES_RELATIVE_PATH" : "Signatures"
 }
