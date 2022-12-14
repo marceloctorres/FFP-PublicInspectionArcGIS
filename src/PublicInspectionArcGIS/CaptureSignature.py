@@ -65,53 +65,61 @@ class CaptureSignaturesTool :
     
     @ToolboxLogger.log_method
     def getSelectedParties(self) :
+        try :
+            self.aprx.save()
+        except Exception as e :
+            ToolboxLogger.error(e)
 
         map = self.aprx.listMaps(self.INSPECTION_MAP)[0]
         search_tables = [l for l in map.listTables() if l.name == self.PARTY_NAME]
         partyTable = search_tables[0] if len(search_tables) > 0 else None
-        selectedRows = partyTable.getSelectionSet()
 
-        if len(selectedRows) == 1 :
-            ToolboxLogger.info("One party selected.")
-            self.setMatchTable()
+        if partyTable:
+            selectedRows = partyTable.getSelectionSet()
 
-            row_id = selectedRows.pop()
-            parties = self.da.query(self.PARTY_NAME, ["OBJECTID", self.PARTY_ID_FIELD], "OBJECTID = {}".format(row_id))
+            if selectedRows and len(selectedRows) == 1 :
+                ToolboxLogger.info("One party selected.")
+                self.setMatchTable()
 
-            self.guid = parties[0][self.PARTY_ID_FIELD]
-            ToolboxLogger.info("Party ID: {}".format(self.guid))     
+                row_id = selectedRows.pop()
+                parties = self.da.query(self.PARTY_NAME, ["OBJECTID", self.PARTY_ID_FIELD], "OBJECTID = {}".format(row_id))
 
-            command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, self.guid.lower())
-            output = os.popen(command)
-            output.read()
+                self.guid = parties[0][self.PARTY_ID_FIELD]
+                ToolboxLogger.info("Party ID: {}".format(self.guid))     
 
-            signatureFilePath = os.path.join(self.signaturesPath, "{}.png".format(self.guid.lower()))
-            if os.path.exists(signatureFilePath) :
-                ToolboxLogger.info("Signature File: {}".format(signatureFilePath))
+                command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, self.guid.lower())
+                output = os.popen(command)
+                output.read()
 
-                approvals = self.da.query(self.APPROVAL_NAME, [self.APPROVAL_ID_FIELD, self.PARTY_FK_FIELD], "{} = '{}'".format(self.PARTY_FK_FIELD, self.guid))
-                approvals_ids = ["'{}'".format(i[self.APPROVAL_ID_FIELD]) for i in approvals]
-                approval_signatures = self.da.query(self.APPROVAL_SIGNATURE_NAME, [self.APPROVAL_SIGNATURE_ID_FIELD, self.APPROVAL_FK_FIELD], "{} IN ({})".format(self.APPROVAL_FK_FIELD, ",".join(approvals_ids)))
+                signatureFilePath = os.path.join(self.signaturesPath, "{}.png".format(self.guid.lower()))
+                if os.path.exists(signatureFilePath) :
+                    ToolboxLogger.info("Signature File: {}".format(signatureFilePath))
 
-                match_da = ArcpyDataAccess(arcpy.env.scratchGDB)
-                for approval_signature in approval_signatures :
-                    values = []
-                    value = tuple([approval_signature[self.APPROVAL_SIGNATURE_ID_FIELD], signatureFilePath])
-                    values.append(value)
+                    approvals = self.da.query(self.APPROVAL_NAME, [self.APPROVAL_ID_FIELD, self.PARTY_FK_FIELD], "{} = '{}'".format(self.PARTY_FK_FIELD, self.guid))
+                    approvals_ids = ["'{}'".format(i[self.APPROVAL_ID_FIELD]) for i in approvals]
+                    approval_signatures = self.da.query(self.APPROVAL_SIGNATURE_NAME, [self.APPROVAL_SIGNATURE_ID_FIELD, self.APPROVAL_FK_FIELD], "{} IN ({})".format(self.APPROVAL_FK_FIELD, ",".join(approvals_ids)))
 
-                    match_da.add(self.matchtableName, [self.matchField, self.pictureField], values)
-                match_da = None
+                    match_da = ArcpyDataAccess(arcpy.env.scratchGDB)
+                    for approval_signature in approval_signatures :
+                        values = []
+                        value = tuple([approval_signature[self.APPROVAL_SIGNATURE_ID_FIELD], signatureFilePath])
+                        values.append(value)
 
-                arcpy.AddAttachments_management(self.da.findTablePath(self.APPROVAL_SIGNATURE_NAME), 
-                    self.APPROVAL_SIGNATURE_ID_FIELD, 
-                    self.matchTablePath, 
-                    self.matchField, 
-                    self.pictureField)
+                        match_da.add(self.matchtableName, [self.matchField, self.pictureField], values)
+                    match_da = None
 
-        elif len(selectedRows) > 1 :
-            ToolboxLogger.error("More than one party selected.")
-        else :  
-            ToolboxLogger.error("No party selected.")
+                    arcpy.AddAttachments_management(self.da.findTablePath(self.APPROVAL_SIGNATURE_NAME), 
+                        self.APPROVAL_SIGNATURE_ID_FIELD, 
+                        self.matchTablePath, 
+                        self.matchField, 
+                        self.pictureField)
+
+            elif selectedRows and len(selectedRows) > 1 :
+                ToolboxLogger.error("More than one party selected.")
+            else :  
+                ToolboxLogger.error("No party selected.")
+        else :
+            ToolboxLogger.error("No party table found.")
 
     @ToolboxLogger.log_method
     def execute(self) :
