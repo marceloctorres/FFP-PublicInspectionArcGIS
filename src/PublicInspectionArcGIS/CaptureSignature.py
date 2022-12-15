@@ -27,6 +27,9 @@ class CaptureSignaturesTool :
         self.SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH")
         self.SIGNATURE_CAPTURE_TOOL_COMMAND = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_COMMAND")
         self.SIGNATURES_RELATIVE_PATH = configuration.getConfigKey("SIGNATURES_RELATIVE_PATH")
+        self.APPROVAL_SIGNATURE_FK_FIELD = configuration.getConfigKey("APPROVAL_SIGNATURE_FK_FIELD")
+        self.APPROVAL_SIGNATURE_ATTACH_NAME = configuration.getConfigKey("APPROVAL_SIGNATURE_ATTACH_NAME")
+        self.APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD = configuration.getConfigKey("APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD")
 
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.da = ArcpyDataAccess(self.inspectionDataSource)
@@ -91,13 +94,20 @@ class CaptureSignaturesTool :
                 output = os.popen(command)
                 output.read()
 
-                signatureFilePath = os.path.join(self.signaturesPath, "{}.png".format(self.guid.lower()))
+                signatureFilename = "{}.png".format(self.guid.lower())
+                signatureFilePath = os.path.join(self.signaturesPath, signatureFilename)
+
                 if os.path.exists(signatureFilePath) :
                     ToolboxLogger.info("Signature File: {}".format(signatureFilePath))
 
                     approvals = self.da.query(self.APPROVAL_NAME, [self.APPROVAL_ID_FIELD, self.PARTY_FK_FIELD], "{} = '{}'".format(self.PARTY_FK_FIELD, self.guid))
                     approvals_ids = ["'{}'".format(i[self.APPROVAL_ID_FIELD]) for i in approvals]
+
                     approval_signatures = self.da.query(self.APPROVAL_SIGNATURE_NAME, [self.APPROVAL_SIGNATURE_ID_FIELD, self.APPROVAL_FK_FIELD], "{} IN ({})".format(self.APPROVAL_FK_FIELD, ",".join(approvals_ids)))
+                    approval_signatures_ids = ["'{}'".format(i[self.APPROVAL_SIGNATURE_ID_FIELD]) for i in approval_signatures]
+
+                    self.da.delete(self.APPROVAL_SIGNATURE_ATTACH_NAME, 
+                        filter= "{} = '{}' AND {} IN ({})".format(self.APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD, signatureFilename, self.APPROVAL_SIGNATURE_FK_FIELD, ",".join(approval_signatures_ids)))
 
                     match_da = ArcpyDataAccess(arcpy.env.scratchGDB)
                     for approval_signature in approval_signatures :

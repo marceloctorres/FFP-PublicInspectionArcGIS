@@ -15,6 +15,7 @@ config_path = os.path.join(folder_path, CONFIG_PATH)
 if os.path.exists(config_path) :
     debug = Configuration(config_path)
     project_folder = debug.getConfigKey("project_folder")
-    aprx_file = os.path.join(project_folder, "Public Inspection.aprx")
+    project_file = debug.getConfigKey("project_file")
+    aprx_file = os.path.join(project_folder, project_file)
     aprx = arcpy.mp.ArcGISProject(aprx_file)
     PublicInspectionTools.CaptureSignatures(aprx)

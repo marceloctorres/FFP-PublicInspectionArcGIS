@@ -15,9 +15,11 @@ config_path = os.path.join(folder_path, CONFIG_PATH)
 if os.path.exists(config_path) :
     debug = Configuration(config_path)
     data_folder = debug.getConfigKey("data_folder")
-    project_folder = debug.getConfigKey("project_folder")
     fgdb_load = os.path.join(data_folder, "dummydata_load.gdb")
-    aprx_file = os.path.join(project_folder, "Public Inspection.aprx")
+
+    project_folder = debug.getConfigKey("project_folder")
+    project_file = debug.getConfigKey("project_file")
+    aprx_file = os.path.join(project_folder, project_file)
 
     aprx = arcpy.mp.ArcGISProject(aprx_file)
     PublicInspectionTools.SetupDataSource(fgdb_load, aprx)
