@@ -18,6 +18,7 @@ class SetupDataSourcesTool :
         self.INSPECTION_DATASET_NAME = configuration.getConfigKey("INSPECTION_DATASET_NAME")
         self.PARCEL_XML_PATH = configuration.getConfigKey("PARCEL_XML_PATH")
         self.LOAD_XML_PATH = configuration.getConfigKey("LOAD_XML_PATH")
+        self.LADM_XML_PATH = configuration.getConfigKey("LADM_XML_PATH")
         self.PARCEL_TYPE = configuration.getConfigKey("PARCEL_TYPE")
         self.PARCEL_RECORD_FIELD = configuration.getConfigKey("PARCEL_RECORD_FIELD")
         self.PARCEL_FABRIC_PATH = configuration.getConfigKey("PARCEL_FABRIC_PATH")
@@ -26,6 +27,7 @@ class SetupDataSourcesTool :
 
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.surveyDataSource = os.path.join(self.folder, self.SURVEY_DATASET_NAME)
+
         ToolboxLogger.info("Load Data Source:       {}".format(self.loadDataSourcePath))
         ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
         ToolboxLogger.info("Survey Data Source:     {}".format(self.surveyDataSource))
@@ -168,21 +170,11 @@ class SetupDataSourcesTool :
                         ToolboxLogger.debug("Destination register count = {}.".format(len(destination_registers)))
                         if len(destination_registers) > 0:
 
-                            #fixed_destination_records = 0 
-                            #destination_records = 0
-
                             for register in origin_registers:
                                 fix_rs_value = register[fix_rs_field.name]
-                                #updated_registers_old = self.da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, fix_rs_value))
 
                                 self.da.update(destination_classname, [origin_fk_name], [register[origin_pk_name]], "{} = '{}'".format(origin_fk_name, fix_rs_value))
-                                #updated_registers = self.da.query(destination_classname, [origin_fk_name], "{} = '{}'".format(origin_fk_name, register[origin_pk_name]))
-
-                                #fixed_destination_records += len(updated_registers)
-                                #destination_records += len(updated_registers_old)
-                            #ToolboxLogger.debug("Destination fixing register count '{}'.".format(destination_records))
-                            #ToolboxLogger.debug("Destination fixed register count '{}'.".format(fixed_destination_records))
-    
+   
     @ToolboxLogger.log_method           
     def cleanFixRelationshipsData(self, dataset) :
         dataset_relationship_classes = [x for x in arcpy.Describe(dataset).children if x.datatype == "RelationshipClass" and x.cardinality != "ManyToMany"]
@@ -281,23 +273,79 @@ class SetupDataSourcesTool :
 
     #Validate load data source
     def validateLoadDataSource(self) :
+        validation_errors = []
         if not self.loadDataSourcePath :
             raise Exception("Load Data Source is not set.")
 
         if not os.path.exists(self.loadDataSourcePath) :
             raise Exception("Load Data Source does not exist.")
 
+        file_folder_path = os.path.dirname(os.path.realpath(__file__))
+        xml_path = os.path.join(file_folder_path, self.LADM_XML_PATH)
+
+        VALIDATION_DATASET_NAME = "validation.gdb"
+        validationDatasetPath = os.path.join(self.folder, VALIDATION_DATASET_NAME)
+
+        arcpy.management.CreateFileGDB(self.folder, VALIDATION_DATASET_NAME, "CURRENT")
+        ToolboxLogger.info("Validation Dataset Created")
+
+        arcpy.management.ImportXMLWorkspaceDocument(validationDatasetPath, xml_path, "SCHEMA_ONLY")
+
+        workspace = arcpy.env.workspace
+        arcpy.env.workspace = validationDatasetPath
+
+        origin_featureClasses = arcpy.ListFeatureClasses()
+        origin_tables = arcpy.ListTables()
+        origin_objects = origin_featureClasses + origin_tables
+
+        arcpy.env.workspace = self.loadDataSourcePath
+        target_featureClasses = arcpy.ListFeatureClasses()
+        target_tables = arcpy.ListTables()
+        target_objects = target_featureClasses + target_tables
+
+        arcpy.env.workspace = workspace
+
+        for origin_object in origin_objects :
+            if origin_object not in target_objects :
+                validation_errors.append("Load Data Source does not contain '{}' feature class.".format(origin_object))
+            else :
+                origin_fields = arcpy.ListFields(os.path.join(arcpy.env.scratchGDB, origin_object))
+                target_fields = arcpy.ListFields(os.path.join(self.loadDataSourcePath, origin_object))
+                for origin_field in origin_fields :
+                    if origin_field.name not in [f.name for f in target_fields] :
+                        validation_errors.append("Load Data Source does not contain '{}' field in '{}' feature class.".format(origin_field.name, origin_object))
+                    else :
+                        for target_field in target_fields :
+                            if target_field.name == origin_field.name :
+                                if target_field.type != origin_field.type :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different type.".format(origin_field.name, origin_object))
+                                if target_field.length != origin_field.length :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different length.".format(origin_field.name, origin_object))
+                                if target_field.isNullable != origin_field.isNullable :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different nullable.".format(origin_field.name, origin_object))
+                                if target_field.domain != origin_field.domain :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different domain.".format(origin_field.name, origin_object))
+                                break
+
+        arcpy.management.Delete(validationDatasetPath)
+        return len(validation_errors)==0, validation_errors
+
+
     @ToolboxLogger.log_method
     def execute(self) :
         try:
-            self.validateLoadDataSource()
-            self.createSurveyDataSource()
-            self.cleanInspectionMap()
-            self.createInspectionDataSource()
-            self.appendParcelData()
-            self.fixRelationships()
-            self.createParcelRecords()
-            self.buildParcelFabric()
-            self.createInspectionMap()
+            validation, validation_errors = self.validateLoadDataSource()
+            if validation :
+                self.createSurveyDataSource()
+                self.cleanInspectionMap()
+                self.createInspectionDataSource()
+                self.appendParcelData()
+                self.fixRelationships()
+                self.createParcelRecords()
+                self.buildParcelFabric()
+                self.createInspectionMap()
+            else :
+                ToolboxLogger.error("Validation Errors: {}".format("\n".join(validation_errors)))
+
         except Exception as e :
             ToolboxLogger.error(e.message)

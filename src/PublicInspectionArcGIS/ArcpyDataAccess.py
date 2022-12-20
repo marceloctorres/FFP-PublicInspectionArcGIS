@@ -42,7 +42,7 @@ class ArcpyDataAccess(DataAccess) :
         if index > -1:
             row[index] = value
 
-    def _search_da(self, table, fields, filter=None, geometry=False) :
+    def query(self, table, fields="*", filter=None, geometry=False) :
         table_path = self.findTablePath(table)
         if(fields == "*" and geometry) :
             fields = ["*", "SHAPE@"]
@@ -68,9 +68,6 @@ class ArcpyDataAccess(DataAccess) :
         except Exception as e:
             ToolboxLogger.debug("ERROR: ---->{}".format(e))
 
-    def query(self, table, fields = "*", filter = None, geometry = False) :
-        return self._search_da(table, fields, filter, geometry)
-
     def add(self, table, fields, values) :
         table_path = self.findTablePath(table)
         table_fields = arcpy.ListFields(table_path)
@@ -86,7 +83,7 @@ class ArcpyDataAccess(DataAccess) :
                     values[index] = tuple(value_list)
 
         edit = da.Editor(self.workspace_path)
-        edit.startEditing(with_undo=True, multiuser_mode=True)
+        edit.startEditing(with_undo=False, multiuser_mode=False)
         edit.startOperation()
 
         cursor = da.InsertCursor(table_path, fields)
@@ -96,7 +93,9 @@ class ArcpyDataAccess(DataAccess) :
             id = cursor.insertRow(row)
             inserted_id.append(id) 
 
+        del row
         del cursor
+
         edit.stopOperation()
         edit.stopEditing(save_changes=True)        
 
@@ -107,7 +106,7 @@ class ArcpyDataAccess(DataAccess) :
         table_path = self.findTablePath(table)
 
         edit = da.Editor(self.workspace_path)
-        edit.startEditing(with_undo=True, multiuser_mode=True)
+        edit.startEditing(with_undo=False, multiuser_mode=False)
         edit.startOperation()
 
         if filter:
@@ -121,6 +120,9 @@ class ArcpyDataAccess(DataAccess) :
                 row[index] =values[index]
             cursor.updateRow(row)
 
+        del row
+        del cursor
+
         edit.stopOperation()
         edit.stopEditing(save_changes=True)
 
@@ -130,7 +132,7 @@ class ArcpyDataAccess(DataAccess) :
             fields = "*"
 
         edit = da.Editor(self.workspace_path)
-        edit.startEditing(with_undo=True, multiuser_mode=True)
+        edit.startEditing(with_undo=False, multiuser_mode=False)
         edit.startOperation()
 
         if filter:
@@ -140,6 +142,8 @@ class ArcpyDataAccess(DataAccess) :
         
         for row in cursor:
             cursor.deleteRow()
+
+        del cursor
 
         edit.stopOperation()
         edit.stopEditing(save_changes=True)

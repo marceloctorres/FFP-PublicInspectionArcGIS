@@ -3,6 +3,7 @@
     "INSPECTION_DATASET_NAME" : "inspection.gdb",
     "INSPECTION_MAP" : "Inspection",
     "PARCEL_XML_PATH" : "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.2.xml",
+    "LADM_XML_PATH" : "XmlWorkspaceDocuments\\Ladmv9en.xml",
     "LOAD_XML_PATH" : "XmlWorkspaceDocuments\\load.xml",
     "PARCEL_TYPE" : "SpatialUnit",
     "PARCEL_RECORD_FIELD" : "legal_id",
@@ -20,6 +21,7 @@
     "BOUNDARY_ID_FIELD" : "GlobalID",
     "BOUNDARY_DESCRIPTION_FIELD" : "description",
     "BOUNDARY_FK_FIELD" : "boundary_id",
+    "BOUNDARY_STATE_FIELD" : "boundary_state",
 
     "RIGTH_NAME" : "Right",
     "RIGHT_ID_FIELD" : "GlobalID",
@@ -32,6 +34,8 @@
     "APPROVAL_NAME" : "Approval",
     "APPROVAL_ID_FIELD" : "GlobalID",
     "APPROVAL_FK_FIELD" : "approval_id",
+    "APPROVAL_DATE_FIELD" : "approval_date",
+    "APPROVAL_IS_APPROVED_FIELD" : "is_approved",
 
     "APPROVAL_SIGNATURE_NAME" : "ApprovalSignature",
     "APPROVAL_SIGNATURE_ID_FIELD" : "GlobalID",
