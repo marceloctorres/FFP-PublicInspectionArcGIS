@@ -111,6 +111,7 @@ class CaptureSignatureTool(object):
         self.description = "Capture Party Signature to express agreement to Public Inspection"
         self.alias = "CaptureSignatureTool"
         
+        self.Params = {"param0": 0}
         self.canRunInBackground = True
         ToolboxLogger.initLogger(handler_type = STREAM_HANDLER | ARCGIS_HANDLER )
         ToolboxLogger.setInfoLevel()
@@ -118,6 +119,16 @@ class CaptureSignatureTool(object):
     def getParameterInfo(self):
         """Define parameter definitions"""
         params = []
+
+        param = arcpy.Parameter(
+            displayName="Legal ID",
+            name="param0",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input",
+        )
+        params.insert(self.Params["param0"], param)
+
         return params
 
     def isLicensed(self):
@@ -137,7 +148,9 @@ class CaptureSignatureTool(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
+        legal_id = parameters[self.Params["param0"]].valueAsText
+
         aprx = arcpy.mp.ArcGISProject("CURRENT")
-        PublicInspectionTools.CaptureSignatures(aprx=aprx)
+        PublicInspectionTools.CaptureSignatures(aprx=aprx, legal_id=legal_id)
 
         return        

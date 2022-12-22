@@ -22,7 +22,7 @@ class CalculateBoundariesTool:
         self.BOUNDARY_DESCRIPTION_FIELD = configuration.getConfigKey("BOUNDARY_DESCRIPTION_FIELD")
         self.BOUNDARY_FK_FIELD = configuration.getConfigKey("BOUNDARY_FK_FIELD")
 
-        self.RIGTH_NAME = configuration.getConfigKey("RIGTH_NAME")
+        self.RIGHT_NAME = configuration.getConfigKey("RIGHT_NAME")
         self.RIGHT_ID_FIELD = configuration.getConfigKey("RIGHT_ID_FIELD")
         self.RIGHT_FK_FIELD = configuration.getConfigKey("RIGHT_FK_FIELD")
 

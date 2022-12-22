@@ -15,31 +15,31 @@ class PublicInspectionTools :
         return Configuration(config_path)
 
     @staticmethod 
-    def PublicInspectionTool1(param0 = None):
+    def PublicInspectionTool1(param0=None):
         ToolboxLogger.info(param0)
 
     @staticmethod 
-    def PublicInspectionTool2(param0 = None):
+    def PublicInspectionTool2(param0=None):
         ToolboxLogger.info(param0)
 
     @staticmethod
-    def SetupDataSource(loadDataSourcePath = None, aprx = None) :
+    def SetupDataSource(loadDataSourcePath=None, aprx=None) :
         if loadDataSourcePath != None and aprx != None:
             configuration = PublicInspectionTools.getConfiguration()
-            tool = SetupDataSourcesTool(configuration=configuration, loadDataSourcePath=loadDataSourcePath, aprx=aprx)
+            tool = SetupDataSourcesTool(configuration=configuration, aprx=aprx, loadDataSourcePath=loadDataSourcePath)
             tool.execute()
 
     @staticmethod
-    def CalculateBoundaries(aprx = None) :
+    def CalculateBoundaries(aprx=None) :
         if aprx != None :
             configuration = PublicInspectionTools.getConfiguration()
             tool = CalculateBoundariesTool(configuration=configuration, aprx=aprx)
             tool.execute()
 
     @staticmethod
-    def CaptureSignatures(aprx = None) :
+    def CaptureSignatures(aprx=None, legal_id=None) :
         if aprx != None :
             configuration = PublicInspectionTools.getConfiguration()
-            tool = CaptureSignaturesTool(configuration=configuration, aprx=aprx)
+            tool = CaptureSignaturesTool(configuration=configuration, aprx=aprx, legal_id=legal_id)
             tool.execute()
     

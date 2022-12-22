@@ -6,13 +6,29 @@ from PublicInspectionArcGIS.Utils import ToolboxLogger
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
 
 class CaptureSignaturesTool :
-
-    def __init__(self, configuration, aprx) :
+    def __init__(self, configuration, aprx, legal_id) :
+        self.legal_id = legal_id
         self.aprx = aprx
         self.folder = self.aprx.homeFolder
 
         self.INSPECTION_DATASET_NAME = configuration.getConfigKey("INSPECTION_DATASET_NAME")
         self.INSPECTION_MAP = configuration.getConfigKey("INSPECTION_MAP")
+
+        self.SPATIAL_UNIT_NAME = configuration.getConfigKey("SPATIAL_UNIT_NAME")
+        self.SPATIAL_UNIT_ID_FIELD = configuration.getConfigKey("SPATIAL_UNIT_ID_FIELD")
+        self.SPATIAL_UNIT_NAME_FIELD = configuration.getConfigKey("SPATIAL_UNIT_NAME_FIELD")
+        self.SPATIAL_UNIT_BOUNDARY_NAME = configuration.getConfigKey("SPATIAL_UNIT_BOUNDARY_NAME")
+        self.SPATIAL_UNIT_FK_FIELD = configuration.getConfigKey("SPATIAL_UNIT_FK_FIELD")
+        self.SPATIAL_UNIT_LEGAL_ID_FIELD = configuration.getConfigKey("SPATIAL_UNIT_LEGAL_ID_FIELD")
+        
+        self.BOUNDARY_NAME = configuration.getConfigKey("BOUNDARY_NAME")
+        self.BOUNDARY_ID_FIELD = configuration.getConfigKey("BOUNDARY_ID_FIELD")
+        self.BOUNDARY_DESCRIPTION_FIELD = configuration.getConfigKey("BOUNDARY_DESCRIPTION_FIELD")
+        self.BOUNDARY_FK_FIELD = configuration.getConfigKey("BOUNDARY_FK_FIELD")
+
+        self.RIGHT_NAME = configuration.getConfigKey("RIGHT_NAME")
+        self.RIGHT_ID_FIELD = configuration.getConfigKey("RIGHT_ID_FIELD")
+        self.RIGHT_FK_FIELD = configuration.getConfigKey("RIGHT_FK_FIELD")        
 
         self.PARTY_NAME = configuration.getConfigKey("PARTY_NAME")
         self.PARTY_ID_FIELD = configuration.getConfigKey("PARTY_ID_FIELD")
@@ -97,7 +113,6 @@ class CaptureSignaturesTool :
     def updateApprovalState(self, approvals):
         ToolboxLogger.info("Updating Approvals ...")
         self.updateApprovalsIsApprovedCursor(approvals)
-        #self.updateApprovalsIsApprovedTools(approvals)
         self.updateBoundaryState(approvals)
         ToolboxLogger.info("Approvals updated.")
 
@@ -150,68 +165,64 @@ class CaptureSignaturesTool :
             approvalTable.setSelectionSet([], "NEW")
             boundaryLayer.setSelectionSet([], "NEW")
 
-        try :
-            self.aprx.save()
-        except Exception as e :
-            ToolboxLogger.error("Eror saving project {}".format(e))
-            return 
+        spatialUnits = self.da.query(self.SPATIAL_UNIT_NAME, [self.SPATIAL_UNIT_ID_FIELD, self.SPATIAL_UNIT_LEGAL_ID_FIELD], "{} = '{}'".format(self.SPATIAL_UNIT_LEGAL_ID_FIELD, self.legal_id))
+        spatialUnit_id = spatialUnits[0][self.SPATIAL_UNIT_ID_FIELD] if len(spatialUnits) > 0 else None
 
-        partyTable = self.__getMapTable(self.PARTY_NAME)
-        if partyTable:
-            selectedRows = partyTable.getSelectionSet()
+        if spatialUnit_id:
+            self.setMatchTable()
 
-            if selectedRows and len(selectedRows) == 1 :
-                ToolboxLogger.info("One party selected.")
-                self.setMatchTable()
+            rights = self.da.query(self.RIGHT_NAME, [self.RIGHT_ID_FIELD], "{} = '{}'".format(self.SPATIAL_UNIT_FK_FIELD, spatialUnit_id))
+            right_id = rights[0][self.RIGHT_ID_FIELD] if len(rights) > 0 else None
 
-                row_id = selectedRows.pop()
-                parties = self.da.query(self.PARTY_NAME, ["OBJECTID", self.PARTY_ID_FIELD], "OBJECTID = {}".format(row_id))
+            if right_id:
+                parties = self.da.query(self.PARTY_NAME, [self.PARTY_ID_FIELD], "{} = '{}'".format(self.RIGHT_FK_FIELD, right_id))
+                party_id = parties[0][self.PARTY_ID_FIELD] if len(parties) > 0 else None
 
-                self.guid = parties[0][self.PARTY_ID_FIELD]
-                ToolboxLogger.info("Party ID: {}".format(self.guid))     
+                if party_id:
+                    self.guid = party_id
+                    ToolboxLogger.info("Party ID: {}".format(self.guid))     
 
-                command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, self.guid.lower())
-                output = os.popen(command)
-                output.read()
+                    command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, self.guid.lower())
+                    output = os.popen(command)
+                    output.read()
 
-                signatureFilename = "{}.png".format(self.guid.lower())
-                signatureFilePath = os.path.join(self.signaturesPath, signatureFilename)
+                    signatureFilename = "{}.png".format(self.guid.lower())
+                    signatureFilePath = os.path.join(self.signaturesPath, signatureFilename)
 
-                if os.path.exists(signatureFilePath) :
-                    ToolboxLogger.info("Signature File: {}".format(signatureFilePath))
+                    if os.path.exists(signatureFilePath) :
+                        ToolboxLogger.info("Signature File: {}".format(signatureFilePath))
 
-                    approvals = self.da.query(self.APPROVAL_NAME, [self.APPROVAL_ID_FIELD, self.PARTY_FK_FIELD, self.BOUNDARY_FK_FIELD], "{} = '{}'".format(self.PARTY_FK_FIELD, self.guid))
-                    approvals_ids = ["'{}'".format(i[self.APPROVAL_ID_FIELD]) for i in approvals]
+                        approvals = self.da.query(self.APPROVAL_NAME, [self.APPROVAL_ID_FIELD, self.PARTY_FK_FIELD, self.BOUNDARY_FK_FIELD], "{} = '{}'".format(self.PARTY_FK_FIELD, self.guid))
+                        approvals_ids = ["'{}'".format(i[self.APPROVAL_ID_FIELD]) for i in approvals]
 
-                    approval_signatures = self.da.query(self.APPROVAL_SIGNATURE_NAME, [self.APPROVAL_SIGNATURE_ID_FIELD, self.APPROVAL_FK_FIELD], "{} IN ({})".format(self.APPROVAL_FK_FIELD, ",".join(approvals_ids)))
-                    approval_signatures_ids = ["'{}'".format(i[self.APPROVAL_SIGNATURE_ID_FIELD]) for i in approval_signatures]
+                        approval_signatures = self.da.query(self.APPROVAL_SIGNATURE_NAME, [self.APPROVAL_SIGNATURE_ID_FIELD, self.APPROVAL_FK_FIELD], "{} IN ({})".format(self.APPROVAL_FK_FIELD, ",".join(approvals_ids)))
+                        approval_signatures_ids = ["'{}'".format(i[self.APPROVAL_SIGNATURE_ID_FIELD]) for i in approval_signatures]
 
-                    self.da.delete(self.APPROVAL_SIGNATURE_ATTACH_NAME, 
-                        filter= "{} = '{}' AND {} IN ({})".format(self.APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD, signatureFilename, self.APPROVAL_SIGNATURE_FK_FIELD, ",".join(approval_signatures_ids)))
+                        self.da.delete(self.APPROVAL_SIGNATURE_ATTACH_NAME, 
+                            filter= "{} = '{}' AND {} IN ({})".format(self.APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD, signatureFilename, self.APPROVAL_SIGNATURE_FK_FIELD, ",".join(approval_signatures_ids)))
 
-                    match_da = ArcpyDataAccess(arcpy.env.scratchGDB)
-                    for approval_signature in approval_signatures :
-                        values = []
-                        value = tuple([approval_signature[self.APPROVAL_SIGNATURE_ID_FIELD], signatureFilePath])
-                        values.append(value)
+                        match_da = ArcpyDataAccess(arcpy.env.scratchGDB)
+                        for approval_signature in approval_signatures :
+                            values = []
+                            value = tuple([approval_signature[self.APPROVAL_SIGNATURE_ID_FIELD], signatureFilePath])
+                            values.append(value)
 
-                        match_da.add(self.matchtableName, [self.matchField, self.pictureField], values)
-                    match_da = None
+                            match_da.add(self.matchtableName, [self.matchField, self.pictureField], values)
+                        match_da = None
 
-                    arcpy.AddAttachments_management(self.da.findTablePath(self.APPROVAL_SIGNATURE_NAME), 
-                        self.APPROVAL_SIGNATURE_ID_FIELD, 
-                        self.matchTablePath, 
-                        self.matchField, 
-                        self.pictureField)
-                    
-                    self.updateApprovalState(approvals)
-
-            elif selectedRows and len(selectedRows) > 1 :
-                ToolboxLogger.error("More than one party selected.")
-            else :  
-                ToolboxLogger.error("No party selected.")
+                        arcpy.AddAttachments_management(self.da.findTablePath(self.APPROVAL_SIGNATURE_NAME), 
+                            self.APPROVAL_SIGNATURE_ID_FIELD, 
+                            self.matchTablePath, 
+                            self.matchField, 
+                            self.pictureField)
+                        
+                        self.updateApprovalState(approvals)
+                else :
+                    ToolboxLogger.error("Party not found")
+            else :
+                ToolboxLogger.error("Right not found")
         else :
-            ToolboxLogger.error("No party table found.")
+            ToolboxLogger.error("Spatial Unit not found")
 
     @ToolboxLogger.log_method
     def execute(self) :

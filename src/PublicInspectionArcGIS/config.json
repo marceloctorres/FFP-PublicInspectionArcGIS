@@ -14,6 +14,7 @@
     "SPATIAL_UNIT_NAME" : "SpatialUnit",
     "SPATIAL_UNIT_ID_FIELD" : "GlobalID",
     "SPATIAL_UNIT_NAME_FIELD" : "spatialunit_name",
+    "SPATIAL_UNIT_LEGAL_ID_FIELD" : "legal_id",
     "SPATIAL_UNIT_BOUNDARY_NAME" : "SpatialUnit_Boundary",
     "SPATIAL_UNIT_FK_FIELD" :"spatialunit_id",
     
@@ -23,7 +24,7 @@
     "BOUNDARY_FK_FIELD" : "boundary_id",
     "BOUNDARY_STATE_FIELD" : "boundary_state",
 
-    "RIGTH_NAME" : "Right",
+    "RIGHT_NAME" : "Right",
     "RIGHT_ID_FIELD" : "GlobalID",
     "RIGHT_FK_FIELD": "right_id",
 

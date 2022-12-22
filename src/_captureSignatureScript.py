@@ -18,4 +18,4 @@ if os.path.exists(config_path) :
     project_file = debug.getConfigKey("project_file")
     aprx_file = os.path.join(project_folder, project_file)
     aprx = arcpy.mp.ArcGISProject(aprx_file)
-    PublicInspectionTools.CaptureSignatures(aprx)
+    PublicInspectionTools.CaptureSignatures(aprx, legal_id="13248000000010428000")
