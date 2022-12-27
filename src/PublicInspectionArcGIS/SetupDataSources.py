@@ -2,17 +2,13 @@ import arcpy
 import shutil
 import os
 
-from PublicInspectionArcGIS.Utils import ToolboxLogger
+from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
+from PublicInspectionArcGIS.PublicInspectionTool import PublicInspectionTool
 
-class SetupDataSourcesTool :
-    def __init__(self, configuration, aprx, loadDataSourcePath) :
-        self.TEMPORAL_ID_PATTERN = "temp_{}_id"
-        self.TEMPORAL_NAME_PATTERN = "Temp {} ID"
-
-        self.aprx = aprx
-        self.loadDataSourcePath = loadDataSourcePath
-        self.folder = self.aprx.homeFolder
+class SetupDataSourcesTool(PublicInspectionTool) :
+    def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject, loadDataSourcePath : str):
+        super().__init__(configuration, aprx)
 
         self.SURVEY_DATASET_NAME = configuration.getConfigKey("SURVEY_DATASET_NAME")
         self.INSPECTION_DATASET_NAME = configuration.getConfigKey("INSPECTION_DATASET_NAME")
@@ -25,6 +21,11 @@ class SetupDataSourcesTool :
         self.PARCEL_DATASET = configuration.getConfigKey("PARCEL_DATASET")
         self.INSPECTION_MAP = configuration.getConfigKey("INSPECTION_MAP")
 
+        self.TEMPORAL_ID_PATTERN = "temp_{}_id"
+        self.TEMPORAL_NAME_PATTERN = "Temp {} ID"
+        self.loadDataSourcePath = loadDataSourcePath
+        self.folder = self.aprx.homeFolder
+
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.surveyDataSource = os.path.join(self.folder, self.SURVEY_DATASET_NAME)
 
@@ -33,6 +34,7 @@ class SetupDataSourcesTool :
         ToolboxLogger.info("Survey Data Source:     {}".format(self.surveyDataSource))
         ToolboxLogger.info("Inspection Data Source: {}".format(self.inspectionDataSource))
         ToolboxLogger.info("xml workspace File:     {}".format(self.PARCEL_XML_PATH))
+        ToolboxLogger.debug("Data Access Object:     {}".format(self.da))
     
     @ToolboxLogger.log_method
     def createSurveyDataSource(self):
@@ -158,12 +160,12 @@ class SetupDataSourcesTool :
                     destination_classnames = relationship_class.destinationClassNames
                     origin_pk_name =[k[0] for k in relationship_class.originClassKeys if k[1] == "OriginPrimary"][0]
                     origin_fk_name =[k[0] for k in relationship_class.originClassKeys if k[1] == "OriginForeign"][0]
-                    origin_registers = self.da.query(origin_classname, [origin_pk_name, fix_rs_field.name])
+                    origin_registers = self.da.search(origin_classname, [origin_pk_name, fix_rs_field.name])
                     ToolboxLogger.debug("Origin register count = {}.".format(len(origin_registers)))
                     for destination_classname in destination_classnames:
                         ToolboxLogger.debug("Destination Classname '{}'.".format(destination_classname))
 
-                        destination_registers = self.da.query(destination_classname)
+                        destination_registers = self.da.search(destination_classname)
                         relationship_classes_fixed.append(relationship_class)
                         ToolboxLogger.debug("Fixing Relationship '{}'.".format(relationship_class.name))
 
@@ -200,7 +202,7 @@ class SetupDataSourcesTool :
                 fix_rs_fields = [f for f in destination_classname_fields if f.name == self.TEMPORAL_ID_PATTERN.format(destination_classname.lower())]
                 fix_rs_field = fix_rs_fields[0] if fix_rs_fields else None
                 if fix_rs_field :
-                    null_fix_rs_fields = self.da.query(destination_classname, [fix_rs_field.name], "{} IS NULL".format(fix_rs_field.name))
+                    null_fix_rs_fields = self.da.search(destination_classname, [fix_rs_field.name], "{} IS NULL".format(fix_rs_field.name))
                     if(len(null_fix_rs_fields) > 0) :
                         self.da.delete(destination_classname, filter = "{} IS NULL".format(fix_rs_field.name))
                     arcpy.management.DeleteField(destination_classname_path, fix_rs_field.name)
@@ -208,7 +210,6 @@ class SetupDataSourcesTool :
 
     @ToolboxLogger.log_method
     def fixRelationships(self) :
-        self.da = ArcpyDataAccess(self.inspectionDataSource)
         self.fixDatasetRelationships(self.inspectionDataSource)
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "Parcel"))
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "ReferenceObjects"))

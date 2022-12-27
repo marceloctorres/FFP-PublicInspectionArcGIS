@@ -31,6 +31,8 @@
     "PARTY_NAME" : "Party",
     "PARTY_ID_FIELD" : "GlobalID",
     "PARTY_FK_FIELD" : "party_id",
+    "PARTY_FIRST_NAME_FIELD" : "first_name",
+    "PARTY_LAST_NAME_FIELD" : "last_name",
 
     "APPROVAL_NAME" : "Approval",
     "APPROVAL_ID_FIELD" : "GlobalID",

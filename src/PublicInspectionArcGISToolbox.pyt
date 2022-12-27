@@ -111,10 +111,15 @@ class CaptureSignatureTool(object):
         self.description = "Capture Party Signature to express agreement to Public Inspection"
         self.alias = "CaptureSignatureTool"
         
-        self.Params = {"param0": 0}
+        self.Params = {"param0": 0, "param1": 1}
         self.canRunInBackground = True
+
         ToolboxLogger.initLogger(handler_type = STREAM_HANDLER | ARCGIS_HANDLER )
         ToolboxLogger.setInfoLevel()
+
+        aprx = arcpy.mp.ArcGISProject("CURRENT")
+        self.tool = PublicInspectionTools.getCaptureSignatureTool(aprx)
+        self.parties = []
 
     def getParameterInfo(self):
         """Define parameter definitions"""
@@ -129,6 +134,16 @@ class CaptureSignatureTool(object):
         )
         params.insert(self.Params["param0"], param)
 
+        param = arcpy.Parameter(
+            displayName="Party Name",
+            name="param1",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input",
+            enabled=False
+        )
+        params.insert(self.Params["param1"], param)
+
         return params
 
     def isLicensed(self):
@@ -139,6 +154,15 @@ class CaptureSignatureTool(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
+        if parameters[self.Params["param0"]].altered and parameters[self.Params["param0"]].valueAsText:
+            legal_id = parameters[self.Params["param0"]].valueAsText
+            self.spatialunit = self.tool.get_spatialunit(legal_id)
+            self.parties = self.tool.get_parties(self.spatialunit)
+            if self.parties:
+                party_names = [party["name"] for party in self.parties]
+                parameters[self.Params["param1"]].enabled = len(party_names) > 1
+                parameters[self.Params["param1"]].filter.list = party_names
+                parameters[self.Params["param1"]].value = party_names[0]
         return
 
     def updateMessages(self, parameters):
@@ -148,9 +172,12 @@ class CaptureSignatureTool(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
-        legal_id = parameters[self.Params["param0"]].valueAsText
-
-        aprx = arcpy.mp.ArcGISProject("CURRENT")
-        PublicInspectionTools.CaptureSignatures(aprx=aprx, legal_id=legal_id)
+        party_name = parameters[self.Params["param1"]].valueAsText
+        ToolboxLogger.info("Party Name: {}".format(party_name))
+        if party_name:
+            self.tool.party_id = self.parties[parameters[self.Params["param1"]].filter.list.index(party_name)]["id"]
+            ToolboxLogger.info("Party ID: {}".format(self.tool.party_id))
+            
+            self.tool.execute()
 
         return        

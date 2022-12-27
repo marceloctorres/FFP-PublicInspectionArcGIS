@@ -43,3 +43,12 @@ class PublicInspectionTools :
             tool = CaptureSignaturesTool(configuration=configuration, aprx=aprx, legal_id=legal_id)
             tool.execute()
     
+    @staticmethod
+    def getCaptureSignatureTool(aprx=None) :
+        if aprx != None :   
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = CaptureSignaturesTool(configuration=configuration, aprx=aprx)
+            return tool
+        else :
+            return None
+    

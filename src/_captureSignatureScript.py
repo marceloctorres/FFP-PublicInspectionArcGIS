@@ -18,4 +18,20 @@ if os.path.exists(config_path) :
     project_file = debug.getConfigKey("project_file")
     aprx_file = os.path.join(project_folder, project_file)
     aprx = arcpy.mp.ArcGISProject(aprx_file)
-    PublicInspectionTools.CaptureSignatures(aprx, legal_id="13248000000010428000")
+    tool = PublicInspectionTools.getCaptureSignatureTool(aprx)
+
+    if tool != None :
+        spatialunit = tool.get_spatialunit_by_legal_id(legal_id="13248000000010445000")
+        parties = tool.get_parties_by_spatialunit(spatialunit)
+        neighboring_approvals = tool.get_neighboring_approvals(spatialunit)
+
+        print(parties)
+        print(neighboring_approvals)
+
+        tool.spatialunit = spatialunit
+        tool.party_id = parties[0]["id"]
+        tool.execute()
+
+        print()
+
+    #PublicInspectionTools.CaptureSignatures(aprx, legal_id="13248000000010428000")

@@ -41,8 +41,14 @@ class ArcpyDataAccess(DataAccess) :
         index = fields.index(fieldName.lower())
         if index > -1:
             row[index] = value
-
+    
     def query(self, table, fields="*", filter=None, geometry=False) :
+        return self.search(table, fields, filter, geometry)
+
+    def add(self, table, fields, values) : 
+        return self.insert(table, fields, values)
+
+    def search(self, table, fields="*", filter=None, geometry=False) :
         table_path = self.findTablePath(table)
         if(fields == "*" and geometry) :
             fields = ["*", "SHAPE@"]
@@ -68,7 +74,7 @@ class ArcpyDataAccess(DataAccess) :
         except Exception as e:
             ToolboxLogger.debug("ERROR: ---->{}".format(e))
 
-    def add(self, table, fields, values) :
+    def insert(self, table, fields, values) :
         table_path = self.findTablePath(table)
         table_fields = arcpy.ListFields(table_path)
         oid_field = [f.name for f in table_fields if f.type == "OID"][0]
@@ -99,7 +105,7 @@ class ArcpyDataAccess(DataAccess) :
         edit.stopOperation()
         edit.stopEditing(save_changes=True)        
 
-        register = self.query(table, "*", "{} = {}".format(oid_field, inserted_id[0]))
+        register = self.search(table, "*", "{} = {}".format(oid_field, inserted_id[0]))
         return register
 
     def update(self, table, fields, values, filter = None) :
