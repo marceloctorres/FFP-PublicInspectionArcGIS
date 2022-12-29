@@ -205,7 +205,7 @@ class DataAccess :
     def __init__(self) :
         pass
 
-    def query(self, table, fields, filter = None) :
+    def search(self, table, fields, filter = None) :
         pass
 
     def update(self, tbl_destino, campo_busqueda, campos, registro_origen, valor_relacion, tipo_operacion) :

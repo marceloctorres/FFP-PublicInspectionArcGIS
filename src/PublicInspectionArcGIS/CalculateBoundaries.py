@@ -1,54 +1,23 @@
 import arcpy
 import shutil
 import os
-from PublicInspectionArcGIS.Utils import ToolboxLogger
+
+from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
+from PublicInspectionArcGIS.PublicInspectionTool import PublicInspectionTool
 
-class CalculateBoundariesTool:
-    SURVEY_DATASET_NAME = "survey.gdb"
-    INSPECTION_DATASET_NAME = "load.gdb"
-    PARCEL_XML_PATH = "XmlWorkspaceDocuments\\FFP-ParcelFabric.xml"
-    LOAD_XML_PATH = "XmlWorkspaceDocuments\\load.xml"
-    PARCEL_TYPE = "SpatialUnit"
-    PARCEL_RECORD_FIELD = "legal_id"
-    PARCEL_FABRIC_PATH = "Parcel\PublicInspection"
-    PARCEL_DATASET = "Parcel"
-    GEOMETRY_FIELD = "SHAPE@"
+class CalculateBoundariesTool(PublicInspectionTool):
+    def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject) :
+        super().__init__(configuration, aprx)
+        self.GEOMETRY_FIELD = configuration.getConfigKey("GEOMETRY_FIELD")
 
-    SPATIAL_UNIT_NAME = PARCEL_TYPE
-    SPATIAL_UNIT_ID_FIELD = "GlobalID"
-    SPATIAL_UNIT_NAME_FIELD = "spatialunit_name"
-    SPATIAL_UNIT_BOUNDARY_NAME = "SpatialUnit_Boundary"
-    SPATIAL_UNIT_FK_FIELD ="spatialunit_id"
-    
-    BOUNDARY_NAME = "Boundary"
-    BOUNDARY_ID_FIELD = "GlobalID"
-    BOUNDARY_DESCRIPTION_FIELD = "description"
-    BOUNDARY_FK_FIELD = "boundary_id"
-
-    RIGTH_NAME = "Right"
-    RIGHT_ID_FIELD = "GlobalID"
-    RIGHT_FK_FIELD = "right_id"
-
-    PARTY_NAME = "Party"
-    PARTY_ID_FIELD = "GlobalID"
-    PARTY_FK_FIELD = "party_id"
-
-    APPROVAL_NAME = "Approval"
-    APPROVAL_ID_FIELD = "GlobalID"
-    APPROVAL_FK_FIELD = "approval_id"
-
-    APPROVAL_SIGNATURE_NAME = "ApprovalSignature"
-    APPROVAL_SIGNATURE_ID_FIELD = "GlobalID"
-
-    def __init__(self, inspectionDataSourcePath) :
-        self.inspectionDataSource = inspectionDataSourcePath
+        ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
         ToolboxLogger.info("Inspection Data Source: {}".format(self.inspectionDataSource))
-        self.da = ArcpyDataAccess(self.inspectionDataSource)
+        ToolboxLogger.debug("Data Access Object:     {}".format(self.da))
     
     @ToolboxLogger.log_method
-    def getBoundaries(self) :
-        spatial_units = self.da.query(self.PARCEL_TYPE, geometry=True)
+    def set_boundaries(self) :
+        spatial_units = self.get_spatialunits(geometry=True)
         ToolboxLogger.info("SpatialUnits count {}".format(len(spatial_units)))
 
         while(len(spatial_units) > 0) :
@@ -67,24 +36,25 @@ class CalculateBoundariesTool:
                     ToolboxLogger.debug("Boundary Length: {}".format(intersect.length))
 
                     if intersect.length > 0:
-                        boundary = self.addBoundary(intersect, "{} - {}".format(su0[self.SPATIAL_UNIT_NAME_FIELD], su1[self.SPATIAL_UNIT_NAME_FIELD]))
-                        self.addSpatialUnitBoundary(su0, boundary)
-                        self.addSpatialUnitBoundary(su1, boundary)
+                        boundary = self.add_boundary(intersect, "{} - {}".format(su0[self.SPATIAL_UNIT_NAME_FIELD], su1[self.SPATIAL_UNIT_NAME_FIELD]))
+                        self.add_spatialunit_boundary(su0, boundary)
+                        self.add_spatialunit_boundary(su1, boundary)
 
-                        self.addApprovals(su0, boundary)
-                        self.addApprovals(su1, boundary)
+                        self.add_approvals(su0, boundary)
+                        self.add_approvals(su1, boundary)
                     else :
                         ToolboxLogger.debug("NULL Geometry!")
 
             spatial_unit_id = su0[self.SPATIAL_UNIT_ID_FIELD]
-            spatial_units_boundaries = self.da.query(self.SPATIAL_UNIT_BOUNDARY_NAME, "*", "{} = '{}'".format(self.SPATIAL_UNIT_FK_FIELD, spatial_unit_id))
+            spatial_units_boundaries = self.get_spatialunits_boundaries(filter="{} = '{}'".format(self.SPATIAL_UNIT_FK_FIELD, spatial_unit_id))
 
             if spatial_units_boundaries :
                 boundaries_ids = [row[self.BOUNDARY_FK_FIELD] for row in spatial_units_boundaries]
                 ToolboxLogger.debug("Boundary Ids: {}".format(len(boundaries_ids)))
 
-                related_boundaries = self.da.query(self.BOUNDARY_NAME, [self.BOUNDARY_ID_FIELD, self.GEOMETRY_FIELD], 
-                    ArcpyDataAccess.getWhereClause(self.BOUNDARY_ID_FIELD, boundaries_ids))
+                related_boundaries = self.get_boundaries(fields=[self.BOUNDARY_ID_FIELD, self.GEOMETRY_FIELD], 
+                    filter=ArcpyDataAccess.getWhereClause(self.BOUNDARY_ID_FIELD, boundaries_ids))
+                
                 not_null_related_boundaries = [g[self.GEOMETRY_FIELD] for g in related_boundaries if g[self.GEOMETRY_FIELD]]
                 ToolboxLogger.debug("Boundary Geometries Length: {}".format(len(not_null_related_boundaries)))
 
@@ -95,83 +65,40 @@ class CalculateBoundariesTool:
                 geometry0_boundary = geometry.boundary()
                 intersect = geometry0_boundary.difference(boundary_union)
                 if intersect.length > 0 :
-                    boundary = self.addBoundary(intersect, "{}".format(su0[self.SPATIAL_UNIT_NAME_FIELD]))
-                    self.addSpatialUnitBoundary/(su0, boundary)
-                    self.addApprovals(su0, boundary)
+                    boundary = self.add_boundary(intersect, "{}".format(su0[self.SPATIAL_UNIT_NAME_FIELD]))
+                    self.add_spatialunit_boundary(su0, boundary)
+                    self.add_approvals(su0, boundary)
     
     @ToolboxLogger.log_method
-    def addBoundary(self, geometry, description):
+    def add_boundary(self, geometry, description):
         values = []
         value = tuple([geometry, description])
         values.append(value)
 
-        boundaries = self.da.add(self.BOUNDARY_NAME, [self.GEOMETRY_FIELD, self.BOUNDARY_DESCRIPTION_FIELD], values)
+        boundaries = self.insert_boundaries([self.GEOMETRY_FIELD, self.BOUNDARY_DESCRIPTION_FIELD], values)
         boundary = boundaries[0] if boundaries else None
         ToolboxLogger.debug("{} {}".format(self.BOUNDARY_NAME, boundary[self.BOUNDARY_ID_FIELD] if boundary else ""))
 
         return boundary
 
     @ToolboxLogger.log_method
-    def addSpatialUnitBoundary(self, spatial_unit, boundary):
+    def add_spatialunit_boundary(self, spatial_unit, boundary):
         values = []
         value = tuple([spatial_unit["GlobalID"], boundary[self.BOUNDARY_ID_FIELD]])
         values.append(value)
         
-        spatialunits_boundaries = self.da.add(self.SPATIAL_UNIT_BOUNDARY_NAME, [self.SPATIAL_UNIT_FK_FIELD, self.BOUNDARY_FK_FIELD], values)
+        spatialunits_boundaries = self.insert_spatialunits_boundaries([self.SPATIAL_UNIT_FK_FIELD, self.BOUNDARY_FK_FIELD], values)
         spatialUnit_boundary = spatialunits_boundaries[0] if spatialunits_boundaries else None    
         return spatialUnit_boundary
 
-    @ToolboxLogger.log_method
-    def addApprovals(self, spatialUnit, boundary):
-        rights = self.da.query(self.RIGTH_NAME, [self.RIGHT_ID_FIELD], ArcpyDataAccess.getWhereClause(self.SPATIAL_UNIT_FK_FIELD, spatialUnit[self.SPATIAL_UNIT_ID_FIELD]))
-        for right in rights:
-            parties = self.da.query(self.PARTY_NAME, [self.PARTY_ID_FIELD], ArcpyDataAccess.getWhereClause(self.RIGHT_FK_FIELD, right[self.RIGHT_ID_FIELD]))
-            for party in parties:
-                approvals = self.da.query(self.APPROVAL_NAME, [self.APPROVAL_ID_FIELD], 
-                    ArcpyDataAccess.getWhereClause([self.BOUNDARY_FK_FIELD, self.PARTY_FK_FIELD], [boundary[self.BOUNDARY_ID_FIELD], party[self.PARTY_ID_FIELD]]))
-                if len(approvals) < 1 :
-                    approval = self.addApproval(boundary, party)
-                    self.addApprovalSignature(approval)
-    
-    @ToolboxLogger.log_method
-    def addApprovalSignature(self, approval) :
-        values = []
-        value = tuple([approval[self.APPROVAL_ID_FIELD]])
-        values.append(value)
-
-        signatures = self.da.add(self.APPROVAL_SIGNATURE_NAME, [self.APPROVAL_FK_FIELD], values)
-        signature = signatures[0] if signatures else None
-        ToolboxLogger.debug("{} {}".format(self.APPROVAL_SIGNATURE_NAME, approval[self.APPROVAL_SIGNATURE_ID_FIELD] if signature else ""))
-        return signature
 
     @ToolboxLogger.log_method
-    def addApproval(self, boundary, party):
-        values = []
-        value = tuple([boundary[self.BOUNDARY_ID_FIELD], party[self.PARTY_ID_FIELD]])
-        values.append(value)
-
-        approvals = self.da.add(self.APPROVAL_NAME, [self.BOUNDARY_FK_FIELD, self.PARTY_FK_FIELD], values)
-        approval = approvals[0] if approvals else None
-        ToolboxLogger.debug("{} {}".format(self.APPROVAL_NAME, approval[self.APPROVAL_ID_FIELD] if boundary else ""))
-
-        return approval
-
-    @ToolboxLogger.log_method
-    def getApprovals(self) :
-        spatialunits = self.da.query(self.SPATIAL_UNIT_NAME)
+    def set_approvals(self) :
+        spatialunits = self.get_spatialunits()
         for spatialunit in spatialunits:
-            spatial_unit_id = spatialunit[self.SPATIAL_UNIT_ID_FIELD]
-            spatial_units_boundaries = self.da.query(self.SPATIAL_UNIT_BOUNDARY_NAME, "*", "{} = '{}'".format(self.SPATIAL_UNIT_FK_FIELD, spatial_unit_id))
-
-            if spatial_units_boundaries :
-                boundaries_ids = [row[self.BOUNDARY_FK_FIELD] for row in spatial_units_boundaries]
-                ToolboxLogger.debug("Boundary Ids: {}".format(len(boundaries_ids)))
-
-                boundaries = self.da.query(self.BOUNDARY_NAME, [self.BOUNDARY_ID_FIELD], ArcpyDataAccess.getWhereClause(self.BOUNDARY_ID_FIELD, boundaries_ids))
-                for boundary in boundaries:
-                    self.addApprovals(spatialunit, boundary)
+            self.set_approvals_by_spatialunit(spatialunit)
 
     @ToolboxLogger.log_method
     def execute(self) :
-        self.getBoundaries()
-        self.getApprovals()
+        self.set_boundaries()
+        self.set_approvals()

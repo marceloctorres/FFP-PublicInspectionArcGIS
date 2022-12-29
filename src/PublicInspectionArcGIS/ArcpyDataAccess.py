@@ -10,6 +10,25 @@ class ArcpyDataAccess(DataAccess) :
     def __init__(self, workspace_path) :
         DataAccess.__init__(self)
         self.workspace_path = workspace_path
+        self.__catalog_list = []
+        self.__populate_catalog_list(self.workspace_path)
+    
+    def __populate_catalog_list(self, workspace) :
+        for d in arcpy.Describe(workspace).children :
+            if d.datatype == "FeatureDataset" :
+                catalog_sub_list = self.__populate_catalog_list(d.catalogPath)
+                self.__catalog_list += catalog_sub_list
+            else :
+                catalog_item = {}
+                catalog_item["name"] = d.name 
+                catalog_item["path"] = d.catalogPath
+                self.__catalog_list.append(catalog_item)
+        return self.__catalog_list
+
+    def findTablePath(self, name) :
+        items = [x for x in self.__catalog_list if x["name"] == name]
+        item = items[0] if items else None
+        return item["path"]
 
     def _getValue(self, cursor, row, fieldName):
         fields = tuple(f.lower() for f in cursor.fields)
@@ -22,17 +41,22 @@ class ArcpyDataAccess(DataAccess) :
         index = fields.index(fieldName.lower())
         if index > -1:
             row[index] = value
+    
+    def query(self, table, fields="*", filter=None, geometry=False) :
+        return self.search(table, fields, filter, geometry)
 
-    @ToolboxLogger.log_method
-    def _search_da(self, origin_table, fields, filter=None, geometry=False) :
-        origin_table = os.path.join(self.workspace_path, origin_table)
+    def add(self, table, fields, values) : 
+        return self.insert(table, fields, values)
+
+    def search(self, table, fields="*", filter=None, geometry=False) :
+        table_path = self.findTablePath(table)
         if(fields == "*" and geometry) :
             fields = ["*", "SHAPE@"]
         try:
             if filter == None:
-                origin_cursor = da.SearchCursor(origin_table, fields)
+                origin_cursor = da.SearchCursor(table_path, fields)
             else:
-                origin_cursor = da.SearchCursor(origin_table, fields, filter)
+                origin_cursor = da.SearchCursor(table_path, fields, filter)
 
             output_registers = []
             fields = tuple(f for f in origin_cursor.fields)
@@ -50,14 +74,9 @@ class ArcpyDataAccess(DataAccess) :
         except Exception as e:
             ToolboxLogger.debug("ERROR: ---->{}".format(e))
 
-    @ToolboxLogger.log_method
-    def query(self, table, fields = "*", filter = None, geometry = False) :
-        return self._search_da(table, fields, filter, geometry)
-
-    @ToolboxLogger.log_method
-    def add(self, table, fields, values) :
-        origin_table = os.path.join(self.workspace_path, table)
-        table_fields = arcpy.ListFields(origin_table)
+    def insert(self, table, fields, values) :
+        table_path = self.findTablePath(table)
+        table_fields = arcpy.ListFields(table_path)
         oid_field = [f.name for f in table_fields if f.type == "OID"][0]
         domain_fields = [f for f in table_fields if f.domain != '']
         for domain_field in domain_fields:
@@ -70,35 +89,36 @@ class ArcpyDataAccess(DataAccess) :
                     values[index] = tuple(value_list)
 
         edit = da.Editor(self.workspace_path)
-        edit.startEditing(with_undo=True, multiuser_mode=True)
+        edit.startEditing(with_undo=False, multiuser_mode=False)
         edit.startOperation()
 
-        cursor = da.InsertCursor(origin_table, fields)
+        cursor = da.InsertCursor(table_path, fields)
 
         inserted_id = []
         for row in values:
             id = cursor.insertRow(row)
             inserted_id.append(id) 
 
+        del row
         del cursor
+
         edit.stopOperation()
         edit.stopEditing(save_changes=True)        
 
-        register = self.query(table, "*", "{} = {}".format(oid_field, inserted_id[0]))
+        register = self.search(table, "*", "{} = {}".format(oid_field, inserted_id[0]))
         return register
 
-    @ToolboxLogger.log_method            
     def update(self, table, fields, values, filter = None) :
-        origin_table = os.path.join(self.workspace_path, table)
+        table_path = self.findTablePath(table)
 
         edit = da.Editor(self.workspace_path)
-        edit.startEditing(with_undo=True, multiuser_mode=True)
+        edit.startEditing(with_undo=False, multiuser_mode=False)
         edit.startOperation()
 
         if filter:
-            cursor = da.UpdateCursor(origin_table, fields, filter)
+            cursor = da.UpdateCursor(table_path, fields, filter)
         else :
-            cursor = da.UpdateCursor(origin_table, fields)
+            cursor = da.UpdateCursor(table_path, fields)
         
         for row in cursor:
             for field in fields:
@@ -106,6 +126,30 @@ class ArcpyDataAccess(DataAccess) :
                 row[index] =values[index]
             cursor.updateRow(row)
 
-        edit.stopOperation()
-        edit.stopEditing(save_changes=True)        
+        del row
+        del cursor
 
+        edit.stopOperation()
+        edit.stopEditing(save_changes=True)
+
+    def delete(self, table, fields = None, filter = None):
+        table_path = self.findTablePath(table)
+        if fields == None :
+            fields = "*"
+
+        edit = da.Editor(self.workspace_path)
+        edit.startEditing(with_undo=False, multiuser_mode=False)
+        edit.startOperation()
+
+        if filter:
+            cursor = da.UpdateCursor(table_path, fields, filter)
+        else :
+            cursor = da.UpdateCursor(table_path, fields)
+        
+        for row in cursor:
+            cursor.deleteRow()
+
+        del cursor
+
+        edit.stopOperation()
+        edit.stopEditing(save_changes=True)

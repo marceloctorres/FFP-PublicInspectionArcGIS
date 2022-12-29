@@ -1,29 +1,40 @@
 import arcpy
 import shutil
 import os
-from PublicInspectionArcGIS.Utils import ToolboxLogger
-from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
 
-class SetupDataSourcesTool :
-    SURVEY_DATASET_NAME = "survey.gdb"
-    INSPECTION_DATASET_NAME = "inspection.gdb"
-    PARCEL_XML_PATH = "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.xml"
-    LOAD_XML_PATH = "XmlWorkspaceDocuments\\load.xml"
-    PARCEL_TYPE = "SpatialUnit"
-    PARCEL_RECORD_FIELD = "legal_id"
-    PARCEL_FABRIC_PATH = "Parcel\PublicInspection"
-    PARCEL_DATASET = "Parcel"
-    
-    def __init__(self, loadDataSourcePath, aprx) :
-        self.aprx = aprx
+from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
+from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
+from PublicInspectionArcGIS.PublicInspectionTool import PublicInspectionTool
+
+class SetupDataSourcesTool(PublicInspectionTool) :
+    def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject, loadDataSourcePath : str):
+        super().__init__(configuration, aprx)
+
+        self.SURVEY_DATASET_NAME = configuration.getConfigKey("SURVEY_DATASET_NAME")
+        self.INSPECTION_DATASET_NAME = configuration.getConfigKey("INSPECTION_DATASET_NAME")
+        self.PARCEL_XML_PATH = configuration.getConfigKey("PARCEL_XML_PATH")
+        self.LOAD_XML_PATH = configuration.getConfigKey("LOAD_XML_PATH")
+        self.LADM_XML_PATH = configuration.getConfigKey("LADM_XML_PATH")
+        self.PARCEL_TYPE = configuration.getConfigKey("PARCEL_TYPE")
+        self.PARCEL_RECORD_FIELD = configuration.getConfigKey("PARCEL_RECORD_FIELD")
+        self.PARCEL_FABRIC_PATH = configuration.getConfigKey("PARCEL_FABRIC_PATH")
+        self.PARCEL_DATASET = configuration.getConfigKey("PARCEL_DATASET")
+        self.INSPECTION_MAP = configuration.getConfigKey("INSPECTION_MAP")
+
+        self.TEMPORAL_ID_PATTERN = "temp_{}_id"
+        self.TEMPORAL_NAME_PATTERN = "Temp {} ID"
         self.loadDataSourcePath = loadDataSourcePath
         self.folder = self.aprx.homeFolder
+
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.surveyDataSource = os.path.join(self.folder, self.SURVEY_DATASET_NAME)
-        ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
+
         ToolboxLogger.info("Load Data Source:       {}".format(self.loadDataSourcePath))
+        ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
         ToolboxLogger.info("Survey Data Source:     {}".format(self.surveyDataSource))
         ToolboxLogger.info("Inspection Data Source: {}".format(self.inspectionDataSource))
+        ToolboxLogger.info("xml workspace File:     {}".format(self.PARCEL_XML_PATH))
+        ToolboxLogger.debug("Data Access Object:     {}".format(self.da))
     
     @ToolboxLogger.log_method
     def createSurveyDataSource(self):
@@ -40,7 +51,7 @@ class SetupDataSourcesTool :
         arcpy.management.ImportXMLWorkspaceDocument(self.surveyDataSource, xml_path)
         ToolboxLogger.info("Survey Data Imported")
 
-        arcpy.management.Delete(xml_path)        
+        arcpy.management.Delete(xml_path)    
 
     @ToolboxLogger.log_method
     def copySurveyDataSource(self) :
@@ -87,29 +98,23 @@ class SetupDataSourcesTool :
         ToolboxLogger.debug("Output: {}".format(output_ds_path))
 
         result_in = arcpy.management.GetCount(input_ds_path)
+        result_in_count = int(result_in[0])
 
-        if result_in != 0 :
+        if result_in_count != 0 :
             input_ds_fields = arcpy.ListFields(input_ds_path)
             output_ds_fields = arcpy.ListFields(output_ds_path)
 
-            fix_rs_field_name = "{}_id".format(input_ds.lower())
+            fix_rs_field_name = self.TEMPORAL_ID_PATTERN.format(input_ds.lower())
             nf = [x for x in output_ds_fields if x.name.lower() == fix_rs_field_name]
             if(len(nf) == 0):
-                ToolboxLogger.debug("Nooo! Existe el campo {}".format(fix_rs_field_name))
-                out_table = arcpy.management.AddField(output_ds_path, fix_rs_field_name, "GUID", field_alias= "{} ID".format(input_ds) , field_is_nullable = "NULLABLE")
+                out_table = arcpy.management.AddField(output_ds_path, fix_rs_field_name, "GUID", field_alias= self.TEMPORAL_NAME_PATTERN.format(input_ds) , field_is_nullable = "NULLABLE")
                 arcpy.management.AddIndex(output_ds_path, [fix_rs_field_name], "GUID_{}".format(fix_rs_field_name))
+                ToolboxLogger.debug("Temp '{}' field added.".format(fix_rs_field_name))
 
-                ToolboxLogger.debug("Nueva tabla: {}".format(out_table))
                 output_ds_fields = arcpy.ListFields(output_ds_path)
-            else:
-                print("Existe el campo {}".format(fix_rs_field_name))
 
-            field_names = [f.name for f in output_ds_fields]
             fix_rs_field = [f for f in output_ds_fields if f.name == fix_rs_field_name][0]
-            ToolboxLogger.debug("Campos de salida {}".format(field_names))
-
             fieldMappings = arcpy.FieldMappings()
-            fieldMappings.addTable(output_ds_path)
 
             for out_field in output_ds_fields:
                 if out_field.type != "OID" and out_field.type != "Geometry":
@@ -125,55 +130,93 @@ class SetupDataSourcesTool :
                     if input_field :
                         fm = arcpy.FieldMap()
                         fm.addInputField(input_ds_path, input_field.name)
-
-                        ToolboxLogger.info("Input Field: {} Output Field: {}".format(input_field.name, output_field.name))
                         fm.outputField = output_field
                         fieldMappings.addFieldMap(fm)
 
             output = arcpy.management.Append(input_ds_path, output_ds_path, "NO_TEST", fieldMappings)
             result_out = arcpy.management.GetCount(output)
         else :
-            result_out = 0
+            result_out = []
+            result_out.append('0')
 
         ToolboxLogger.info("Input Count: {} Output Count: {}".format(result_in[0], result_out[0]))
         ToolboxLogger.info("...'{}' Data Appended".format(input_ds))
 
+    @ToolboxLogger.log_method
     def fixDatasetRelationships(self, dataset) :
-        da = ArcpyDataAccess(self.inspectionDataSource)
-        dataset_relationship_classes = [x for x in arcpy.Describe(dataset).children if x.datatype == "RelationshipClass"]
-        for relationship_class in dataset_relationship_classes:
+        dataset_relationship_classes = [x for x in arcpy.Describe(dataset).children if x.datatype == "RelationshipClass" and x.cardinality != "ManyToMany"]
+        relationship_classes_fixed = []
 
+        for relationship_class in dataset_relationship_classes:
             origin_classnames = [x for x in relationship_class.originClassNames if not x.lower().__contains__("publicinspection")]
             origin_classname = origin_classnames[0] if origin_classnames else None
             if origin_classname :
                 origin_classname_path = os.path.join(dataset, origin_classname)
-                ToolboxLogger.debug("rsc = {} ---> ocs = {}".format(relationship_class.name, origin_classname))
-
                 origin_classname_fields = arcpy.ListFields(origin_classname_path)
-                fix_rs_fields = [f for f in origin_classname_fields if f.name == "{}_id".format(origin_classname.lower())]
+                fix_rs_fields = [f for f in origin_classname_fields if f.name == self.TEMPORAL_ID_PATTERN.format(origin_classname.lower())]
                 fix_rs_field = fix_rs_fields[0] if fix_rs_fields else None
                 if fix_rs_field :
-                    origin_registers = da.query(origin_classname, "*")
-                    destination_class_names = relationship_class.destinationClassNames
+                    ToolboxLogger.debug("Origin Classname '{}'.".format(origin_classname))
+                    destination_classnames = relationship_class.destinationClassNames
                     origin_pk_name =[k[0] for k in relationship_class.originClassKeys if k[1] == "OriginPrimary"][0]
                     origin_fk_name =[k[0] for k in relationship_class.originClassKeys if k[1] == "OriginForeign"][0]
-                    ToolboxLogger.debug("origin_pk_name = {}".format(origin_pk_name))
-                    ToolboxLogger.debug("origin_fk_name = {}".format(origin_fk_name))
+                    origin_registers = self.da.search(origin_classname, [origin_pk_name, fix_rs_field.name])
+                    ToolboxLogger.debug("Origin register count = {}.".format(len(origin_registers)))
+                    for destination_classname in destination_classnames:
+                        ToolboxLogger.debug("Destination Classname '{}'.".format(destination_classname))
 
-                    ToolboxLogger.debug("destination_class_names = {}".format(destination_class_names))
-                    for register in origin_registers:
-                        fix_rs_value = register[fix_rs_field.name]
-                        for destination_classname in destination_class_names:
-                            ToolboxLogger.debug("fix_rs_value = {}".format(fix_rs_value))
-                            ToolboxLogger.debug("destination_classname = {}".format(destination_classname))
-                            da.update(destination_classname, [origin_fk_name], [register[origin_pk_name]], "{} = '{}'".format(origin_fk_name, fix_rs_value))
+                        destination_registers = self.da.search(destination_classname)
+                        relationship_classes_fixed.append(relationship_class)
+                        ToolboxLogger.debug("Fixing Relationship '{}'.".format(relationship_class.name))
+
+                        ToolboxLogger.debug("Destination register count = {}.".format(len(destination_registers)))
+                        if len(destination_registers) > 0:
+
+                            for register in origin_registers:
+                                fix_rs_value = register[fix_rs_field.name]
+
+                                self.da.update(destination_classname, [origin_fk_name], [register[origin_pk_name]], "{} = '{}'".format(origin_fk_name, fix_rs_value))
+   
+    @ToolboxLogger.log_method           
+    def cleanFixRelationshipsData(self, dataset) :
+        dataset_relationship_classes = [x for x in arcpy.Describe(dataset).children if x.datatype == "RelationshipClass" and x.cardinality != "ManyToMany"]
+
+        for relationship_class in dataset_relationship_classes:
+            ToolboxLogger.debug("Relationship '{}' fixed.".format(relationship_class.name))
+            origin_classnames = [x for x in relationship_class.originClassNames if not x.lower().__contains__("publicinspection")]
+            origin_classname = origin_classnames[0] if origin_classnames else None
+            if origin_classname :
+                origin_classname_path = os.path.join(dataset, origin_classname)
+
+                origin_classname_fields = arcpy.ListFields(origin_classname_path)
+                fix_rs_fields = [f for f in origin_classname_fields if f.name == self.TEMPORAL_ID_PATTERN.format(origin_classname.lower())]
+                fix_rs_field = fix_rs_fields[0] if fix_rs_fields else None
                 if fix_rs_field :
                     arcpy.management.DeleteField(origin_classname_path, fix_rs_field.name)
+                    ToolboxLogger.debug("Temporal '{}' field deleted.".format(fix_rs_field.name))
 
+            destination_classnames = relationship_class.destinationClassNames
+            for destination_classname in destination_classnames :
+                destination_classname_path = self.da.findTablePath(destination_classname)
+                destination_classname_fields = arcpy.ListFields(destination_classname_path)
+                fix_rs_fields = [f for f in destination_classname_fields if f.name == self.TEMPORAL_ID_PATTERN.format(destination_classname.lower())]
+                fix_rs_field = fix_rs_fields[0] if fix_rs_fields else None
+                if fix_rs_field :
+                    null_fix_rs_fields = self.da.search(destination_classname, [fix_rs_field.name], "{} IS NULL".format(fix_rs_field.name))
+                    if(len(null_fix_rs_fields) > 0) :
+                        self.da.delete(destination_classname, filter = "{} IS NULL".format(fix_rs_field.name))
+                    arcpy.management.DeleteField(destination_classname_path, fix_rs_field.name)
+                    ToolboxLogger.debug("Temporal '{}' field deleted.".format(fix_rs_field.name))
+
+    @ToolboxLogger.log_method
     def fixRelationships(self) :
         self.fixDatasetRelationships(self.inspectionDataSource)
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "Parcel"))
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "ReferenceObjects"))
+
+        self.cleanFixRelationshipsData(self.inspectionDataSource)
+        self.cleanFixRelationshipsData(os.path.join(self.inspectionDataSource, "Parcel"))
+        self.cleanFixRelationshipsData(os.path.join(self.inspectionDataSource, "ReferenceObjects"))
 
     @ToolboxLogger.log_method
     def appendParcelData(self) :
@@ -202,7 +245,7 @@ class SetupDataSourcesTool :
     
     @ToolboxLogger.log_method
     def createInspectionMap(self) :
-        map = self.aprx.listMaps("Inspection")[0]
+        map = self.aprx.listMaps(self.INSPECTION_MAP)[0]
 
         in_parcel_fabric_path = os.path.join(self.inspectionDataSource, self.PARCEL_FABRIC_PATH)
         map.addDataFromPath(in_parcel_fabric_path)
@@ -219,21 +262,91 @@ class SetupDataSourcesTool :
             if exist :
                 ToolboxLogger.info("Apply Symbology From Layer: {}.lyrx".format(layer.longName))
                 arcpy.management.ApplySymbologyFromLayer(layer, layer_file_path, None, "DEFAULT")
-
                 layer.updateConnectionProperties(layer.connectionProperties, layer.connectionProperties)
         
         if self.aprx.activeMap != map:
             map.openView()
 
-        self.aprx.save()
+        try :
+            self.aprx.save()
+        except Exception as e :
+            ToolboxLogger.error(e)
+
+    #Validate load data source
+    def validateLoadDataSource(self) :
+        validation_errors = []
+        if not self.loadDataSourcePath :
+            raise Exception("Load Data Source is not set.")
+
+        if not os.path.exists(self.loadDataSourcePath) :
+            raise Exception("Load Data Source does not exist.")
+
+        file_folder_path = os.path.dirname(os.path.realpath(__file__))
+        xml_path = os.path.join(file_folder_path, self.LADM_XML_PATH)
+
+        VALIDATION_DATASET_NAME = "validation.gdb"
+        validationDatasetPath = os.path.join(self.folder, VALIDATION_DATASET_NAME)
+
+        arcpy.management.CreateFileGDB(self.folder, VALIDATION_DATASET_NAME, "CURRENT")
+        ToolboxLogger.info("Validation Dataset Created")
+
+        arcpy.management.ImportXMLWorkspaceDocument(validationDatasetPath, xml_path, "SCHEMA_ONLY")
+
+        workspace = arcpy.env.workspace
+        arcpy.env.workspace = validationDatasetPath
+
+        origin_featureClasses = arcpy.ListFeatureClasses()
+        origin_tables = arcpy.ListTables()
+        origin_objects = origin_featureClasses + origin_tables
+
+        arcpy.env.workspace = self.loadDataSourcePath
+        target_featureClasses = arcpy.ListFeatureClasses()
+        target_tables = arcpy.ListTables()
+        target_objects = target_featureClasses + target_tables
+
+        arcpy.env.workspace = workspace
+
+        for origin_object in origin_objects :
+            if origin_object not in target_objects :
+                validation_errors.append("Load Data Source does not contain '{}' feature class.".format(origin_object))
+            else :
+                origin_fields = arcpy.ListFields(os.path.join(arcpy.env.scratchGDB, origin_object))
+                target_fields = arcpy.ListFields(os.path.join(self.loadDataSourcePath, origin_object))
+                for origin_field in origin_fields :
+                    if origin_field.name not in [f.name for f in target_fields] :
+                        validation_errors.append("Load Data Source does not contain '{}' field in '{}' feature class.".format(origin_field.name, origin_object))
+                    else :
+                        for target_field in target_fields :
+                            if target_field.name == origin_field.name :
+                                if target_field.type != origin_field.type :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different type.".format(origin_field.name, origin_object))
+                                if target_field.length != origin_field.length :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different length.".format(origin_field.name, origin_object))
+                                if target_field.isNullable != origin_field.isNullable :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different nullable.".format(origin_field.name, origin_object))
+                                if target_field.domain != origin_field.domain :
+                                    validation_errors.append("Load Data Source '{}' field in '{}' feature class has different domain.".format(origin_field.name, origin_object))
+                                break
+
+        arcpy.management.Delete(validationDatasetPath)
+        return len(validation_errors)==0, validation_errors
+
 
     @ToolboxLogger.log_method
     def execute(self) :
-        self.createSurveyDataSource()
-        self.cleanInspectionMap()
-        self.createInspectionDataSource()
-        self.appendParcelData()
-        self.fixRelationships()
-        self.createParcelRecords()
-        self.buildParcelFabric()
-        self.createInspectionMap()
+        try:
+            validation, validation_errors = self.validateLoadDataSource()
+            if validation :
+                self.createSurveyDataSource()
+                self.cleanInspectionMap()
+                self.createInspectionDataSource()
+                self.appendParcelData()
+                self.fixRelationships()
+                self.createParcelRecords()
+                self.buildParcelFabric()
+                self.createInspectionMap()
+            else :
+                ToolboxLogger.error("Validation Errors: {}".format("\n".join(validation_errors)))
+
+        except Exception as e :
+            ToolboxLogger.error(e.message)
