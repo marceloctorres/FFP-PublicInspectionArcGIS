@@ -4,6 +4,7 @@ from PublicInspectionArcGIS.Utils import ToolboxLogger, ARCGIS_HANDLER, STREAM_H
 from PublicInspectionArcGIS.SetupDataSources import SetupDataSourcesTool
 from PublicInspectionArcGIS.CalculateBoundaries import CalculateBoundariesTool
 from PublicInspectionArcGIS.CaptureSignature import CaptureSignaturesTool
+from PublicInspectionArcGIS.CalculateCertificate import CalculateCertificateTool
 
 class PublicInspectionTools :
 
@@ -51,4 +52,9 @@ class PublicInspectionTools :
             return tool
         else :
             return None
+    
+    @staticmethod
+    def CalculateCertificate(inspectionDataPath) :
+        tool = CalculateCertificateTool(inspectionDataPath)
+        tool.execute()   
     
