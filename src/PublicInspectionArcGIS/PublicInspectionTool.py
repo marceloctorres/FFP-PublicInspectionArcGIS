@@ -172,7 +172,7 @@ class PublicInspectionTool(object) :
 
                 parties_props = []
                 for party in parties:
-                    party[self.PARTY_ID_FIELD] = party[self.PARTY_ID_FIELD].lower()
+                    party[self.PARTY_ID_FIELD] = party[self.PARTY_ID_FIELD]
                     party_prop = {}
                     party_prop["id"] = party[self.PARTY_ID_FIELD]
                     party_prop["name"] = "{} {}".format(party[self.PARTY_FIRST_NAME_FIELD], party[self.PARTY_LAST_NAME_FIELD])
@@ -186,13 +186,13 @@ class PublicInspectionTool(object) :
         spatialunit_id = spatialunit[self.SPATIAL_UNIT_ID_FIELD] if spatialunit else None
         if spatialunit_id:
             spatialunits_boundaries = self.get_spatialunits_boundaries(
-                fields=[self.BOUNDARY_FK_FIELD],
+                fields=[self.SPATIAL_UNIT_FK_FIELD, self.BOUNDARY_FK_FIELD],
                 filter="{} = '{}'".format(self.SPATIAL_UNIT_FK_FIELD, spatialunit_id))
             boundary_ids = ["'{}'".format(row[self.BOUNDARY_FK_FIELD]) for row in spatialunits_boundaries]
 
             if boundary_ids:
                 spatialunits_boundaries = self.get_spatialunits_boundaries(
-                    fields=[self.SPATIAL_UNIT_FK_FIELD],
+                    fields=[self.SPATIAL_UNIT_FK_FIELD, self.BOUNDARY_FK_FIELD],
                     filter="{} IN ({})".format(self.BOUNDARY_FK_FIELD, ",".join(boundary_ids)))
                 spatialunit_ids = ["'{}'".format(row[self.SPATIAL_UNIT_FK_FIELD]) for row in spatialunits_boundaries]
 
@@ -200,6 +200,11 @@ class PublicInspectionTool(object) :
                     spatialunits = self.get_spatialunits(
                         fields=[self.SPATIAL_UNIT_ID_FIELD, self.SPATIAL_UNIT_LEGAL_ID_FIELD, self.SPATIAL_UNIT_NAME_FIELD],
                         filter="{} IN ({})".format(self.SPATIAL_UNIT_ID_FIELD, ",".join(spatialunit_ids)))
+                    for sp in spatialunits:
+                        boundary_ids = [row[self.BOUNDARY_FK_FIELD] for row in spatialunits_boundaries if row[self.SPATIAL_UNIT_FK_FIELD] == sp[self.SPATIAL_UNIT_ID_FIELD]]
+                        boundary_id = boundary_ids[0] if len(boundary_ids) > 0 else None
+                        if boundary_id:
+                            sp["boundary_id"] = boundary_id
                     return [sp for sp in spatialunits if sp[self.SPATIAL_UNIT_ID_FIELD] != spatialunit[self.SPATIAL_UNIT_ID_FIELD]]
         return None
 
@@ -229,27 +234,37 @@ class PublicInspectionTool(object) :
         return neighboring_parties
 
     @ToolboxLogger.log_method
-    def get_neighboring_approvals(self, spatialunit) :
+    def get_neighboring_approvals(self, spatialunit, party) :
 
         parties = self.get_neighboring_parties(spatialunit)
-        parties_id = ["'{}'".format(party["id"]) for party in parties]
+        parties_id = [party["id"] for party in parties]
 
         boundaries = self.get_boundaries_by_spatialunit(spatialunit)
         boundaries_id = ["'{}'".format(boundary[self.BOUNDARY_ID_FIELD]) for boundary in boundaries]
+        adjacent_spatialunits = self.get_adjacent_spatialunits(spatialunit)
 
         approvals = self.get_approvals(
-            fields=[self.APPROVAL_ID_FIELD, self.APPROVAL_IS_APPROVED_FIELD, self.PARTY_FK_FIELD, self.BOUNDARY_FK_FIELD],
-            filter="{} IN ({}) AND {} IN ({})".format(self.PARTY_FK_FIELD, ",".join(parties_id), self.BOUNDARY_FK_FIELD, ",".join(boundaries_id)))
+            fields=[self.APPROVAL_ID_FIELD, self.APPROVAL_IS_APPROVED_FIELD, self.APPROVAL_DATE_FIELD, self.PARTY_FK_FIELD, self.BOUNDARY_FK_FIELD],
+            filter="{} IN ({})".format(self.BOUNDARY_FK_FIELD, ",".join(boundaries_id)))
 
-        for a in approvals:
-            approval_parties = [p for p in parties if p["id"] == a[self.PARTY_FK_FIELD].lower()]
-            approval_boundaries = [b for b in boundaries if b[self.BOUNDARY_ID_FIELD] == a[self.BOUNDARY_FK_FIELD]]
-            if approval_parties:
-                a["party_name"] = approval_parties[0]["name"]
-            if approval_boundaries:
-                a["boundary_description"] = approval_boundaries[0][self.BOUNDARY_DESCRIPTION_FIELD]
-    
-        return approvals
+        neighboring_approvals = []
+        for boundary in boundaries:
+            party_approvals = [a for a in approvals if a[self.BOUNDARY_FK_FIELD] == boundary[self.BOUNDARY_ID_FIELD] and a[self.PARTY_FK_FIELD] == party["id"]]
+            if party_approvals:
+                neighbors_approvals = [a for a in approvals if a[self.BOUNDARY_FK_FIELD] == boundary[self.BOUNDARY_ID_FIELD] and a[self.PARTY_FK_FIELD] in parties_id]
+                if neighbors_approvals:
+                    parties_names = [p["name"] for p in parties if p["id"] in [a[self.PARTY_FK_FIELD] for a in neighbors_approvals]]
+                    spatialunits_info = [sp for sp in adjacent_spatialunits if sp["boundary_id"] == boundary[self.BOUNDARY_ID_FIELD]]
+                    neighboring_approval = {}
+                    neighboring_approval["id"] = party_approvals[0][self.APPROVAL_ID_FIELD]
+                    neighboring_approval["is_approved"] = party_approvals[0][self.APPROVAL_IS_APPROVED_FIELD]
+                    neighboring_approval["approval_date"] = party_approvals[0][self.APPROVAL_DATE_FIELD]
+                    neighboring_approval["spatialunit_name"] = spatialunits_info[0][self.SPATIAL_UNIT_NAME_FIELD]
+                    neighboring_approval["legal_id"] = spatialunits_info[0][self.SPATIAL_UNIT_LEGAL_ID_FIELD]
+                    neighboring_approval["neighbors"] = ",".join(parties_names)
+                    neighboring_approvals.append(neighboring_approval)
+   
+        return neighboring_approvals
 
     @ToolboxLogger.log_method
     def get_approvals_by_spatialunit(self, spatialunit) : 

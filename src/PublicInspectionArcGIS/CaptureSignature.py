@@ -9,8 +9,9 @@ from PublicInspectionArcGIS.PublicInspectionTool import PublicInspectionTool
 class CaptureSignaturesTool(PublicInspectionTool) :
     def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject) :
         super().__init__(configuration, aprx)
-        self.party_id = None
+        self.party = None
         self.spatialunit = None
+        self.neighboring_approvals = None
 
         self.SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH")
         self.SIGNATURE_CAPTURE_TOOL_COMMAND = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_COMMAND")
@@ -52,11 +53,18 @@ class CaptureSignaturesTool(PublicInspectionTool) :
     @ToolboxLogger.log_method
     def update_approvals_isapproved(self, approvals) :
         try:
-            approval_ids = ["'{}'".format(approval[self.APPROVAL_ID_FIELD]) for approval in approvals]
-            self.update_approvals(
-                fields=[self.APPROVAL_IS_APPROVED_FIELD, self.APPROVAL_DATE_FIELD], 
-                values=["Yes", datetime.today()],
-                filter="{} IN ({})".format(self.APPROVAL_ID_FIELD, ",".join(approval_ids)))
+            for approval in approvals :
+                print(approval)
+                neighboring_approvals = [neighboring_approval for neighboring_approval in self.neighboring_approvals if neighboring_approval["id"] == approval[self.APPROVAL_ID_FIELD]]
+                neighboring_approval = neighboring_approvals[0] if len(neighboring_approvals) > 0 else None
+                print(neighboring_approval)
+                is_approved = neighboring_approval["is_approved"] if neighboring_approval is not None else "Yes"
+                print(is_approved)
+                print()
+                self.update_approvals(
+                    fields=[self.APPROVAL_IS_APPROVED_FIELD, self.APPROVAL_DATE_FIELD], 
+                    values=[is_approved, datetime.today()],
+                    filter="{} = '{}'".format(self.APPROVAL_ID_FIELD, approval[self.APPROVAL_ID_FIELD]))
         except Exception as e:
             ToolboxLogger.error("Error updating approvals: {}".format(e))
 
@@ -74,7 +82,6 @@ class CaptureSignaturesTool(PublicInspectionTool) :
     def update_approvalstate(self, approvals):
         ToolboxLogger.info("Updating Approvals ...")
         self.update_approvals_isapproved(approvals)
-        self.set_boundaries_states(approvals)
         ToolboxLogger.info("Approvals updated.")
 
     @ToolboxLogger.log_method
@@ -111,8 +118,7 @@ class CaptureSignaturesTool(PublicInspectionTool) :
                 boundary[self.BOUNDARY_STATE_FIELD] = "Rejected"
             else:   
                 boundary[self.BOUNDARY_STATE_FIELD] = "In Process"
-
-        self.update_boundaries_states(boundaries)
+        return boundaries
 
     @ToolboxLogger.log_method
     def set_party_signature_attachment(self) :
@@ -123,13 +129,15 @@ class CaptureSignaturesTool(PublicInspectionTool) :
             approvalTable.setSelectionSet([], "NEW")
             boundaryLayer.setSelectionSet([], "NEW")
 
-        if self.party_id and self.spatialunit:
-            ToolboxLogger.info("Party ID: {}".format(self.party_id.lower()))   
-            command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, self.party_id.lower())
+        if self.party and self.spatialunit:
+            party_id = self.party["id"]
+
+            ToolboxLogger.info("Party ID: {}".format(party_id.lower()))   
+            command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, party_id.lower())
             output = os.popen(command)
             output.read()
 
-            signatureFilename = "{}.png".format(self.party_id.lower())
+            signatureFilename = "{}.png".format(party_id.lower())
             signatureFilePath = os.path.join(self.signaturesPath, signatureFilename)
 
             if os.path.exists(signatureFilePath) :
@@ -138,13 +146,13 @@ class CaptureSignaturesTool(PublicInspectionTool) :
 
                 approvals = self.get_approvals(
                     fields=[self.APPROVAL_ID_FIELD, self.PARTY_FK_FIELD, self.BOUNDARY_FK_FIELD],
-                    filter="{} = '{}'".format(self.PARTY_FK_FIELD, self.party_id))
+                    filter="{} = '{}'".format(self.PARTY_FK_FIELD, party_id))
 
                 if len(approvals) == 0 :
                     self.set_approvals_by_spatialunit(self.spatialunit)
                     approvals = self.get_approvals(
                         fields=[self.APPROVAL_ID_FIELD, self.PARTY_FK_FIELD, self.BOUNDARY_FK_FIELD],
-                        filter="{} = '{}'".format(self.PARTY_FK_FIELD, self.party_id))
+                        filter="{} = '{}'".format(self.PARTY_FK_FIELD, party_id))
 
                 approvals_ids = ["'{}'".format(i[self.APPROVAL_ID_FIELD]) for i in approvals]
 
@@ -157,6 +165,7 @@ class CaptureSignaturesTool(PublicInspectionTool) :
                     filter= "{} = '{}' AND {} IN ({})".format(self.APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD, signatureFilename, self.APPROVAL_SIGNATURE_FK_FIELD, ",".join(approval_signatures_ids)))
 
                 match_da = ArcpyDataAccess(arcpy.env.scratchGDB)
+
                 for approval_signature in approval_signatures :
                     values = []
                     value = tuple([approval_signature[self.APPROVAL_SIGNATURE_ID_FIELD], signatureFilePath])
@@ -172,6 +181,7 @@ class CaptureSignaturesTool(PublicInspectionTool) :
                     self.pictureField)
                 
                 self.update_approvalstate(approvals)
+                self.update_boundaries_states(self.set_boundaries_states(approvals))
         else :
             ToolboxLogger.info("Party not found")
 

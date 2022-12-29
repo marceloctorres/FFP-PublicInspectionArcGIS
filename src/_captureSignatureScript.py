@@ -21,17 +21,22 @@ if os.path.exists(config_path) :
     tool = PublicInspectionTools.getCaptureSignatureTool(aprx)
 
     if tool != None :
-        spatialunit = tool.get_spatialunit_by_legal_id(legal_id="13248000000010445000")
+        #legal_id = "13248000000010430000"
+        legal_id = "13248000000010445000"
+        spatialunit = tool.get_spatialunit_by_legal_id(legal_id=legal_id)
         parties = tool.get_parties_by_spatialunit(spatialunit)
-        neighboring_approvals = tool.get_neighboring_approvals(spatialunit)
+        neighboring_approvals = tool.get_neighboring_approvals(spatialunit, parties[0])
+
+        for neighboring_approval in neighboring_approvals :
+            neighboring_approval["is_approved"] = "Yes" if neighboring_approval["is_approved"] == "No Processed" else neighboring_approval["is_approved"]
 
         print(parties)
         print(neighboring_approvals)
 
         tool.spatialunit = spatialunit
-        tool.party_id = parties[0]["id"]
+        tool.party = parties[0]
+        tool.neighboring_approvals = neighboring_approvals
         tool.execute()
 
         print()
-
-    #PublicInspectionTools.CaptureSignatures(aprx, legal_id="13248000000010428000")
+        print("Signature captured")
