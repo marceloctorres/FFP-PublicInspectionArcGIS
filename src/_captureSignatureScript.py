@@ -18,7 +18,7 @@ if os.path.exists(config_path) :
     project_file = debug.getConfigKey("project_file")
     aprx_file = os.path.join(project_folder, project_file)
     aprx = arcpy.mp.ArcGISProject(aprx_file)
-    tool = PublicInspectionTools.getCaptureSignatureTool(aprx)
+    tool = PublicInspectionTools.getCaptureSignature(aprx)
 
     if tool != None :
         #legal_id = "13248000000010430000"

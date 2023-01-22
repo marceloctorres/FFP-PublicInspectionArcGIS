@@ -4,7 +4,7 @@ import os
 from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
 
-class PublicInspectionTool(object) :
+class PublicInspection(object) :
 
     def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject) :
         self.aprx = aprx
@@ -19,6 +19,7 @@ class PublicInspectionTool(object) :
         self.SPATIAL_UNIT_BOUNDARY_NAME = configuration.getConfigKey("SPATIAL_UNIT_BOUNDARY_NAME")
         self.SPATIAL_UNIT_FK_FIELD = configuration.getConfigKey("SPATIAL_UNIT_FK_FIELD")
         self.SPATIAL_UNIT_LEGAL_ID_FIELD = configuration.getConfigKey("SPATIAL_UNIT_LEGAL_ID_FIELD")
+        self.SPATIAL_UNIT_SHAPE_AREA = configuration.getConfigKey("SPATIAL_UNIT_SHAPE_AREA")
         
         self.BOUNDARY_NAME = configuration.getConfigKey("BOUNDARY_NAME")
         self.BOUNDARY_ID_FIELD = configuration.getConfigKey("BOUNDARY_ID_FIELD")
@@ -35,6 +36,8 @@ class PublicInspectionTool(object) :
         self.PARTY_FK_FIELD = configuration.getConfigKey("PARTY_FK_FIELD")
         self.PARTY_FIRST_NAME_FIELD = configuration.getConfigKey("PARTY_FIRST_NAME_FIELD")
         self.PARTY_LAST_NAME_FIELD = configuration.getConfigKey("PARTY_LAST_NAME_FIELD")
+        self.PARTY_ID_NUMBER_FIELD = configuration.getConfigKey("PARTY_ID_NUMBER_FIELD")
+        self.PARTY_GENDER_FIELD = configuration.getConfigKey("PARTY_GENDER_FIELD")
 
         self.APPROVAL_NAME = configuration.getConfigKey("APPROVAL_NAME")
         self.APPROVAL_ID_FIELD = configuration.getConfigKey("APPROVAL_ID_FIELD")
@@ -48,8 +51,20 @@ class PublicInspectionTool(object) :
         self.APPROVAL_SIGNATURE_ATTACH_NAME = configuration.getConfigKey("APPROVAL_SIGNATURE_ATTACH_NAME")
         self.APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD = configuration.getConfigKey("APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD")
 
+        self.POINTS_NAME = configuration.getConfigKey("POINTS_NAME")
+        self.POINTS_ID_FIELD = configuration.getConfigKey("POINTS_ID_FIELD")
+        self.POINTS_TYPE_FIELD = configuration.getConfigKey("POINTS_TYPE_FIELD")
+
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
-        self.da = ArcpyDataAccess(self.inspectionDataSource)
+        if os.path.exists(self.inspectionDataSource) :
+            self.da = ArcpyDataAccess(self.inspectionDataSource)
+        else :
+            self.da = None
+
+    def expand_extent(self, extent : arcpy.Extent, factor : float) :
+        x_factor = 0.5 * extent.width *(factor - 1.0)
+        y_factor = 0.5 * extent.height *(factor - 1.0)
+        return arcpy.Extent(extent.XMin - x_factor, extent.YMin - y_factor, extent.XMax + x_factor, extent.YMax + y_factor)
 
     def get_maptable(self, table_name):
         map = self.aprx.listMaps(self.INSPECTION_MAP)[0]
@@ -66,6 +81,9 @@ class PublicInspectionTool(object) :
 
     def get_boundaries(self, fields="*", filter=None, geometry=False) :
         return self.da.search(self.BOUNDARY_NAME, fields, filter, geometry)
+
+    def get_points(self, fields="*", filter=None, geometry=False) :
+        return self.da.search(self.POINTS_NAME, fields, filter, geometry)
 
     def get_spatialunits_boundaries(self, fields="*", filter=None) :
         return self.da.search(self.SPATIAL_UNIT_BOUNDARY_NAME, fields, filter)
@@ -94,11 +112,14 @@ class PublicInspectionTool(object) :
     def insert_approvals(self, fields, values) :
         return self.da.insert(self.APPROVAL_NAME, fields, values)
 
-    def update_approvals(self, fields, values, filter) :
+    def update_approvals(self, fields, values, filter = None) :
         self.da.update(self.APPROVAL_NAME, fields=fields, values=values, filter=filter)
 
-    def update_boundaries(self, fields, values, filter) :
+    def update_boundaries(self, fields, values, filter = None) :
         self.da.update(self.BOUNDARY_NAME, fields=fields, values=values, filter=filter)
+
+    def update_points(self, fields, values, filter = None) :
+        self.da.update(self.POINTS_NAME, fields=fields, values=values, filter=filter)
 
     @ToolboxLogger.log_method
     def add_approvals(self, spatialunit, boundary):
@@ -148,14 +169,15 @@ class PublicInspectionTool(object) :
             boundaries = self.get_boundaries(
                 fields=[self.BOUNDARY_ID_FIELD], 
                 filter=ArcpyDataAccess.getWhereClause(self.BOUNDARY_ID_FIELD, boundaries_ids))
+                
             for boundary in boundaries:
                 self.add_approvals(spatialunit, boundary)
 
     @ToolboxLogger.log_method
-    def get_spatialunit_by_legal_id(self, legal_id):
+    def get_spatialunit_by_legal_id(self, legal_id, geometry=False):
         spatialunits = self.get_spatialunits(
-            fields=[self.SPATIAL_UNIT_ID_FIELD],
-            filter="{} = '{}'".format(self.SPATIAL_UNIT_LEGAL_ID_FIELD, legal_id))
+            filter="{} = '{}'".format(self.SPATIAL_UNIT_LEGAL_ID_FIELD, legal_id), 
+            geometry=geometry)
         return spatialunits[0] if len(spatialunits) > 0 else None
 
     @ToolboxLogger.log_method
@@ -182,7 +204,7 @@ class PublicInspectionTool(object) :
         return None
 
     @ToolboxLogger.log_method
-    def get_adjacent_spatialunits(self, spatialunit):
+    def get_adjacent_spatialunits(self, spatialunit, geometry=False):
         spatialunit_id = spatialunit[self.SPATIAL_UNIT_ID_FIELD] if spatialunit else None
         if spatialunit_id:
             spatialunits_boundaries = self.get_spatialunits_boundaries(
@@ -198,8 +220,8 @@ class PublicInspectionTool(object) :
 
                 if spatialunit_ids:
                     spatialunits = self.get_spatialunits(
-                        fields=[self.SPATIAL_UNIT_ID_FIELD, self.SPATIAL_UNIT_LEGAL_ID_FIELD, self.SPATIAL_UNIT_NAME_FIELD],
-                        filter="{} IN ({})".format(self.SPATIAL_UNIT_ID_FIELD, ",".join(spatialunit_ids)))
+                        filter="{} IN ({})".format(self.SPATIAL_UNIT_ID_FIELD, ",".join(spatialunit_ids)),
+                        geometry=geometry)
                     for sp in spatialunits:
                         boundary_ids = [row[self.BOUNDARY_FK_FIELD] for row in spatialunits_boundaries if row[self.SPATIAL_UNIT_FK_FIELD] == sp[self.SPATIAL_UNIT_ID_FIELD]]
                         boundary_id = boundary_ids[0] if len(boundary_ids) > 0 else None
