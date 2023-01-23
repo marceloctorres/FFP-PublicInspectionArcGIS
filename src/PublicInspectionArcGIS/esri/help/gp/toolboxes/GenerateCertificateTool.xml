@@ -1,0 +1,4 @@
+<Toolbox Name='GenerateCertificateTool' Alias='GenerateCertificateTool'>
+<DisplayName>Generate Certificate Tool</DisplayName>
+<ArrayOfGPToolInfo xsi:type='typens:ArrayOfGPToolInfo' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:typens='http://www.esri.com/schemas/ArcGIS/3.0.0'><GPToolInfo xsi:type='typens:GPToolInfo'><Name>GenerateCertificate</Name><DisplayName>GenerateCertificate</DisplayName><Category></Category><Help></Help><Description>GenerateCertificate</Description><ProductCode>40</ProductCode><ParameterInfo xsi:type='typens:ArrayOfGPParameterInfo'></ParameterInfo></GPToolInfo></ArrayOfGPToolInfo>
+</Toolbox>

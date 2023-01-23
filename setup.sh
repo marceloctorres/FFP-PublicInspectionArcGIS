@@ -1,5 +1,5 @@
 cd dist
-del /q *.*
+rm /q *.*
 cd ..
 python -m pip install --upgrade pip setuptools wheel build twine keyring artifacts-keyring
 python setup.py sdist bdist_wheel
