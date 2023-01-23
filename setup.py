@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()    
  
 setuptools.setup(name='PublicInspectionArcGIS', 
-        version='1.0.0.2',
+        version='1.0.0.3',
         author='Esri Colombia',
         author_email='mtorres@esri.co',
         license='MIT',
@@ -19,7 +19,7 @@ setuptools.setup(name='PublicInspectionArcGIS',
             'Operating System :: Microsoft :: Windows :: Windows 10',
             'Operating System :: MacOS',
             'Operating System :: Other OS',
-            'Natural Language :: Spanish'
+            'Natural Language :: English'
         ],
         package_dir={"": "src"},
         packages = setuptools.find_packages(where="src"),
@@ -29,6 +29,8 @@ setuptools.setup(name='PublicInspectionArcGIS',
                     'esri/arcpy/*', 
                     'esri/help/gp/*',  
                     'esri/help/gp/toolboxes/*', 
-                    'esri/help/gp/messages/*'] 
+                    'esri/help/gp/messages/*'
+                    'XmlWorkspaceDocuments/*',
+                    ''] 
                     }, 
       )
