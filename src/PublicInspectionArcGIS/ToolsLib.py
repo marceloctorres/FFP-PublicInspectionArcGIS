@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
-from PublicInspectionArcGIS.Utils import ToolboxLogger, ARCGIS_HANDLER, STREAM_HANDLER, Configuration
-from PublicInspectionArcGIS.SetupDataSources import SetupDataSourcesTool
-from PublicInspectionArcGIS.CalculateBoundaries import CalculateBoundariesTool
-from PublicInspectionArcGIS.CaptureSignature import CaptureSignaturesTool
-from PublicInspectionArcGIS.CalculateCertificate import CalculateCertificateTool
+from PublicInspectionArcGIS.Utils import Configuration
+from PublicInspectionArcGIS.SetupDataSources import SetupDataSources
+from PublicInspectionArcGIS.CalculateBoundaries import CalculateBoundaries
+from PublicInspectionArcGIS.CaptureSignature import CaptureSignatures
+from PublicInspectionArcGIS.CalculateCertificate import CalculateCertificate
+from PublicInspectionArcGIS.CalculateDashboard import CalculateDashboard
 
 class PublicInspectionTools :
 
@@ -15,46 +16,83 @@ class PublicInspectionTools :
 
         return Configuration(config_path)
 
-    @staticmethod 
-    def PublicInspectionTool1(param0=None):
-        ToolboxLogger.info(param0)
-
-    @staticmethod 
-    def PublicInspectionTool2(param0=None):
-        ToolboxLogger.info(param0)
-
     @staticmethod
     def SetupDataSource(loadDataSourcePath=None, aprx=None) :
         if loadDataSourcePath != None and aprx != None:
             configuration = PublicInspectionTools.getConfiguration()
-            tool = SetupDataSourcesTool(configuration=configuration, aprx=aprx, loadDataSourcePath=loadDataSourcePath)
+            tool = SetupDataSources(configuration=configuration, aprx=aprx, loadDataSourcePath=loadDataSourcePath)
             tool.execute()
 
     @staticmethod
-    def CalculateBoundaries(aprx=None) :
+    def getSetupDataSource(aprx=None) :
+        if aprx != None :   
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = SetupDataSources(configuration=configuration, aprx=aprx)
+            return tool
+        else :
+            return None
+
+    @staticmethod
+    def CalculateBoundaries(aprx=None, legal_id=None) :
         if aprx != None :
             configuration = PublicInspectionTools.getConfiguration()
-            tool = CalculateBoundariesTool(configuration=configuration, aprx=aprx)
+            tool = CalculateBoundaries(configuration=configuration, aprx=aprx)
+            tool.legal_id = legal_id
             tool.execute()
+
+    @staticmethod
+    def getCalculateBoundaries(aprx=None) :
+        if aprx != None :   
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = CalculateBoundaries(configuration=configuration, aprx=aprx)
+            return tool
+        else :
+            return None            
 
     @staticmethod
     def CaptureSignatures(aprx=None, legal_id=None) :
         if aprx != None :
             configuration = PublicInspectionTools.getConfiguration()
-            tool = CaptureSignaturesTool(configuration=configuration, aprx=aprx, legal_id=legal_id)
+            tool = CaptureSignatures(configuration=configuration, aprx=aprx, legal_id=legal_id)
             tool.execute()
     
     @staticmethod
-    def getCaptureSignatureTool(aprx=None) :
+    def getCaptureSignature(aprx=None) :
         if aprx != None :   
             configuration = PublicInspectionTools.getConfiguration()
-            tool = CaptureSignaturesTool(configuration=configuration, aprx=aprx)
+            tool = CaptureSignatures(configuration=configuration, aprx=aprx)
             return tool
         else :
             return None
     
     @staticmethod
-    def CalculateCertificate(inspectionDataPath) :
-        tool = CalculateCertificateTool(inspectionDataPath)
-        tool.execute()   
-    
+    def getCalculateCertificate(aprx=None ):
+        if aprx != None :   
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = CalculateCertificate(configuration=configuration, aprx=aprx, legal_id=None)
+            return tool
+        else :
+            return None
+        
+    @staticmethod
+    def CalculateCertificate(aprx=None,legal_id=None) :
+        if aprx != None :   
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = CalculateCertificate(configuration=configuration, aprx=aprx, legal_id=legal_id)
+            tool.execute()   
+
+    @staticmethod
+    def getCalculateDashboard(aprx=None ):
+        if aprx != None :   
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = CalculateDashboard(configuration=configuration, aprx=aprx, legal_id=None)
+            return tool
+        else :
+            return None
+        
+    @staticmethod
+    def CalculateDashboard(aprx=None,legal_id=None) :
+        if aprx != None :   
+            configuration = PublicInspectionTools.getConfiguration()
+            tool = CalculateDashboard(configuration=configuration, aprx=aprx, legal_id=legal_id)
+            tool.execute()   

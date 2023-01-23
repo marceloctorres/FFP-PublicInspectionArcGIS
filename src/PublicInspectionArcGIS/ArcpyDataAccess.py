@@ -105,7 +105,7 @@ class ArcpyDataAccess(DataAccess) :
         edit.stopOperation()
         edit.stopEditing(save_changes=True)        
 
-        register = self.search(table, "*", "{} = {}".format(oid_field, inserted_id[0]))
+        register = self.search(table, "*", "{} = {}".format(oid_field, inserted_id[0]), geometry=fields.count("SHAPE@") > 0)
         return register
 
     def update(self, table, fields, values, filter = None) :
@@ -119,14 +119,17 @@ class ArcpyDataAccess(DataAccess) :
             cursor = da.UpdateCursor(table_path, fields, filter)
         else :
             cursor = da.UpdateCursor(table_path, fields)
-        
+
+        count = 0        
         for row in cursor:
+            count += 1
             for field in fields:
                 index = fields.index(field)
                 row[index] =values[index]
             cursor.updateRow(row)
-
-        del row
+        if count == 0:
+            ToolboxLogger.debug("No rows were updated")
+            ToolboxLogger.debug("Table: {}, Fields: {}, Values: {}, Filter: {}".format(table, fields, values, filter))
         del cursor
 
         edit.stopOperation()

@@ -3,13 +3,13 @@ import shutil
 import os
 
 from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
-from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
-from PublicInspectionArcGIS.PublicInspectionTool import PublicInspectionTool
+from PublicInspectionArcGIS.PublicInspection import PublicInspection
 
-class SetupDataSourcesTool(PublicInspectionTool) :
-    def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject, loadDataSourcePath : str):
+class SetupDataSources(PublicInspection) :
+    def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject):
         super().__init__(configuration, aprx)
 
+        self.loadDataSourcePath = None
         self.SURVEY_DATASET_NAME = configuration.getConfigKey("SURVEY_DATASET_NAME")
         self.INSPECTION_DATASET_NAME = configuration.getConfigKey("INSPECTION_DATASET_NAME")
         self.PARCEL_XML_PATH = configuration.getConfigKey("PARCEL_XML_PATH")
@@ -19,22 +19,22 @@ class SetupDataSourcesTool(PublicInspectionTool) :
         self.PARCEL_RECORD_FIELD = configuration.getConfigKey("PARCEL_RECORD_FIELD")
         self.PARCEL_FABRIC_PATH = configuration.getConfigKey("PARCEL_FABRIC_PATH")
         self.PARCEL_DATASET = configuration.getConfigKey("PARCEL_DATASET")
+        self.REFERENCE_OBJECTS_DATASET = configuration.getConfigKey("REFERENCE_OBJECTS_DATASET")
         self.INSPECTION_MAP = configuration.getConfigKey("INSPECTION_MAP")
 
         self.TEMPORAL_ID_PATTERN = "temp_{}_id"
         self.TEMPORAL_NAME_PATTERN = "Temp {} ID"
-        self.loadDataSourcePath = loadDataSourcePath
         self.folder = self.aprx.homeFolder
 
         self.inspectionDataSource = os.path.join(self.folder, self.INSPECTION_DATASET_NAME)
         self.surveyDataSource = os.path.join(self.folder, self.SURVEY_DATASET_NAME)
 
-        ToolboxLogger.info("Load Data Source:       {}".format(self.loadDataSourcePath))
         ToolboxLogger.info("Proyect File:           {}".format(aprx.filePath))
         ToolboxLogger.info("Survey Data Source:     {}".format(self.surveyDataSource))
         ToolboxLogger.info("Inspection Data Source: {}".format(self.inspectionDataSource))
         ToolboxLogger.info("xml workspace File:     {}".format(self.PARCEL_XML_PATH))
-        ToolboxLogger.debug("Data Access Object:     {}".format(self.da))
+        if self.da is not None :
+            ToolboxLogger.debug("Data Access Object:     {}".format(self.da))
     
     @ToolboxLogger.log_method
     def createSurveyDataSource(self):
@@ -63,7 +63,7 @@ class SetupDataSourcesTool(PublicInspectionTool) :
 
     @ToolboxLogger.log_method
     def cleanInspectionMap(self) :
-        map = self.aprx.listMaps("Inspection")[0]
+        map = self.aprx.listMaps(self.INSPECTION_MAP)[0]
 
         layers = [l for l in map.listLayers() if not l.isBasemapLayer]
         for layer in layers :
@@ -72,6 +72,12 @@ class SetupDataSourcesTool(PublicInspectionTool) :
         tables = map.listTables()
         for table in tables :
             map.removeTable(table)   
+        
+        bookmarks = map.listBookmarks("Colombia")
+        if len(bookmarks) > 0 :
+            if self.aprx.activeView is not None :
+                self.aprx.activeView.zoomToBookmark(bookmarks[0])
+
         ToolboxLogger.info("Inspection Map Cleaned")     
 
     @ToolboxLogger.log_method
@@ -179,6 +185,7 @@ class SetupDataSourcesTool(PublicInspectionTool) :
    
     @ToolboxLogger.log_method           
     def cleanFixRelationshipsData(self, dataset) :
+        ToolboxLogger.info("Cleaning Fixed Relationships...")
         dataset_relationship_classes = [x for x in arcpy.Describe(dataset).children if x.datatype == "RelationshipClass" and x.cardinality != "ManyToMany"]
 
         for relationship_class in dataset_relationship_classes:
@@ -209,7 +216,8 @@ class SetupDataSourcesTool(PublicInspectionTool) :
                     ToolboxLogger.debug("Temporal '{}' field deleted.".format(fix_rs_field.name))
 
     @ToolboxLogger.log_method
-    def fixRelationships(self) :
+    def fixRelationships(self):
+        ToolboxLogger.info("Fixing relationships...")
         self.fixDatasetRelationships(self.inspectionDataSource)
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "Parcel"))
         self.fixDatasetRelationships(os.path.join(self.inspectionDataSource, "ReferenceObjects"))
@@ -221,7 +229,6 @@ class SetupDataSourcesTool(PublicInspectionTool) :
     @ToolboxLogger.log_method
     def appendParcelData(self) :
         arcpy.env.workspace = self.loadDataSourcePath
-        #arcpy.env.preserveGlobalIds = True
 
         featureClasses = arcpy.ListFeatureClasses()
         for input_fc in featureClasses:
@@ -242,31 +249,54 @@ class SetupDataSourcesTool(PublicInspectionTool) :
         in_parcel_fabric_path = os.path.join(self.inspectionDataSource, self.PARCEL_FABRIC_PATH)
         arcpy.parcel.BuildParcelFabric(in_parcel_fabric_path, "MAXOF")
         ToolboxLogger.info("Parcel Fabric Built")
-    
+
     @ToolboxLogger.log_method
     def createInspectionMap(self) :
         map = self.aprx.listMaps(self.INSPECTION_MAP)[0]
+        datasets = [self.PARCEL_DATASET, self.PARCEL_FABRIC_PATH, self.REFERENCE_OBJECTS_DATASET]
+        for dataset in datasets :
+            in_dataset = os.path.join(self.inspectionDataSource, dataset)  
+            map.addDataFromPath(in_dataset)
+        
+        workspace = arcpy.env.workspace
+        arcpy.env.workspace = self.inspectionDataSource
+        tables = [table for table in arcpy.ListTables() if not table.lower().__contains__("__attach")]
+        for table in tables:
+            add_table = arcpy.mp.Table(os.path.join(self.inspectionDataSource, table))
+            map.addTable(add_table)
+        arcpy.env.workspace = workspace
 
-        in_parcel_fabric_path = os.path.join(self.inspectionDataSource, self.PARCEL_FABRIC_PATH)
-        map.addDataFromPath(in_parcel_fabric_path)
-
-        in_parcel_dataset = os.path.join(self.inspectionDataSource, self.PARCEL_DATASET)
-        map.addDataFromPath(in_parcel_dataset)
-
+        full_extent_polygon = None
         layers =  [l for l in map.listLayers() if not l.isBasemapLayer]
         for layer in layers :
             layer_file_path = os.path.join(self.folder, "{}.lyrx".format(layer.longName))
             exist = os.path.exists(layer_file_path)
             layer.visible = exist
 
+            if layer.supports("DATASOURCE") and arcpy.Exists(layer.dataSource):
+                descDS = arcpy.Describe(layer.dataSource)
+                if descDS.extent is not None and descDS.extent.height > 0 and descDS.extent.width > 0 :
+                    if full_extent_polygon is None :
+                        full_extent_polygon = descDS.extent.polygon
+                    else :
+                        full_extent_polygon = full_extent_polygon.union(descDS.extent.polygon)
+
             if exist :
-                ToolboxLogger.info("Apply Symbology From Layer: {}.lyrx".format(layer.longName))
-                arcpy.management.ApplySymbologyFromLayer(layer, layer_file_path, None, "DEFAULT")
-                layer.updateConnectionProperties(layer.connectionProperties, layer.connectionProperties)
-        
+                lyrfile = arcpy.mp.LayerFile(layer_file_path)
+                lyr = lyrfile.listLayers(layer.name)[0]
+                layer.symbology = lyr.symbology
+
+                ToolboxLogger.info("Apply Symbology From Layer: {}.lyrx".format(layer.name))
+
+        extent = self.expand_extent(full_extent_polygon.extent, 1.2)
+
         if self.aprx.activeMap != map:
             map.openView()
 
+        if self.aprx.activeView :
+            view = self.aprx.activeView
+            view.camera.setExtent(extent)
+            
         try :
             self.aprx.save()
         except Exception as e :
@@ -286,6 +316,9 @@ class SetupDataSourcesTool(PublicInspectionTool) :
 
         VALIDATION_DATASET_NAME = "validation.gdb"
         validationDatasetPath = os.path.join(self.folder, VALIDATION_DATASET_NAME)
+
+        if(os.path.exists(validationDatasetPath)) :
+            arcpy.Delete_management(validationDatasetPath)
 
         arcpy.management.CreateFileGDB(self.folder, VALIDATION_DATASET_NAME, "CURRENT")
         ToolboxLogger.info("Validation Dataset Created")
@@ -310,7 +343,7 @@ class SetupDataSourcesTool(PublicInspectionTool) :
             if origin_object not in target_objects :
                 validation_errors.append("Load Data Source does not contain '{}' feature class.".format(origin_object))
             else :
-                origin_fields = arcpy.ListFields(os.path.join(arcpy.env.scratchGDB, origin_object))
+                origin_fields = arcpy.ListFields(os.path.join(validationDatasetPath, origin_object))
                 target_fields = arcpy.ListFields(os.path.join(self.loadDataSourcePath, origin_object))
                 for origin_field in origin_fields :
                     if origin_field.name not in [f.name for f in target_fields] :
@@ -329,11 +362,12 @@ class SetupDataSourcesTool(PublicInspectionTool) :
                                 break
 
         arcpy.management.Delete(validationDatasetPath)
+        ToolboxLogger.info("Validation done")
         return len(validation_errors)==0, validation_errors
-
 
     @ToolboxLogger.log_method
     def execute(self) :
+        ToolboxLogger.info("Load Data Source:       {}".format(self.loadDataSourcePath))
         try:
             validation, validation_errors = self.validateLoadDataSource()
             if validation :
@@ -349,4 +383,4 @@ class SetupDataSourcesTool(PublicInspectionTool) :
                 ToolboxLogger.error("Validation Errors: {}".format("\n".join(validation_errors)))
 
         except Exception as e :
-            ToolboxLogger.error(e.message)
+            ToolboxLogger.error(e)

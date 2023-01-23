@@ -2,13 +2,14 @@
     "SURVEY_DATASET_NAME" : "survey.gdb",
     "INSPECTION_DATASET_NAME" : "inspection.gdb",
     "INSPECTION_MAP" : "Inspection",
-    "PARCEL_XML_PATH" : "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.2.xml",
+    "PARCEL_XML_PATH" : "XmlWorkspaceDocuments\\FFP-ParcelFabric.v2.4.xml",
     "LADM_XML_PATH" : "XmlWorkspaceDocuments\\Ladmv9en.xml",
     "LOAD_XML_PATH" : "XmlWorkspaceDocuments\\load.xml",
     "PARCEL_TYPE" : "SpatialUnit",
     "PARCEL_RECORD_FIELD" : "legal_id",
     "PARCEL_FABRIC_PATH" : "Parcel\\PublicInspection",
     "PARCEL_DATASET" : "Parcel",
+    "REFERENCE_OBJECTS_DATASET" : "ReferenceObjects",
     "GEOMETRY_FIELD" : "SHAPE@",
 
     "SPATIAL_UNIT_NAME" : "SpatialUnit",
@@ -17,6 +18,7 @@
     "SPATIAL_UNIT_LEGAL_ID_FIELD" : "legal_id",
     "SPATIAL_UNIT_BOUNDARY_NAME" : "SpatialUnit_Boundary",
     "SPATIAL_UNIT_FK_FIELD" :"spatialunit_id",
+    "SPATIAL_UNIT_SHAPE_AREA":"Shape_Area",
     
     "BOUNDARY_NAME" : "Boundary",
     "BOUNDARY_ID_FIELD" : "GlobalID",
@@ -32,7 +34,9 @@
     "PARTY_ID_FIELD" : "GlobalID",
     "PARTY_FK_FIELD" : "party_id",
     "PARTY_FIRST_NAME_FIELD" : "first_name",
+    "PARTY_ID_NUMBER_FIELD":"id_number",
     "PARTY_LAST_NAME_FIELD" : "last_name",
+    "PARTY_GENDER_FIELD" : "gender",
 
     "APPROVAL_NAME" : "Approval",
     "APPROVAL_ID_FIELD" : "GlobalID",
@@ -48,6 +52,11 @@
     "APPROVAL_SIGNATURE_ATTACH_ATT_NAME_FIELD" : "ATT_NAME",
 
     "SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH" : "SignatureCaptureTool\\FFP.SignatureCapture.exe",
-    "SIGNATURE_CAPTURE_TOOL_COMMAND" : "-fp",
-    "SIGNATURES_RELATIVE_PATH" : "Signatures"
+    "SIGNATURE_CAPTURE_TOOL_FILE_PATH_COMMAND" : "-fp",
+    "SIGNATURE_CAPTURE_TOOL_PARTY_NAME_COMMAND" : "-pn",
+    "SIGNATURES_RELATIVE_PATH" : "Signatures",
+
+    "POINTS_NAME" : "PublicInspection_Points",
+    "POINTS_ID_FIELD" : "GlobalID",
+    "POINTS_TYPE_FIELD" : "type"
 }

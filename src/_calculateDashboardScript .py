@@ -13,9 +13,11 @@ ToolboxLogger.setDebugLevel()
 folder_path = os.path.dirname(os.path.realpath(__file__))
 config_path = os.path.join(folder_path, CONFIG_PATH)
 
-# if os.path.exists(config_path) :
-#     config = Configuration(config_path)
-#     inspectionDataSource = os.path.join(config.getConfigKey('project_folder'), INSPECTION_FGDB)
-inspectionDataSource="D:\\yquinonez\\Documents\\FFP-2.0\\Public Inspeccion\\Public Inspeccion.gdb"    
-PublicInspectionTools.CalculateCertificate(inspectionDataSource)
+aprx_file="D:\\yquinonez\\Documents\\FFP-2.0\\FFP_2.0\\FFP-ArcGISPro-Project\\src\\Public Inspection\\Public Inspection.aprx"
+aprx = arcpy.mp.ArcGISProject(aprx_file)
+
+tool=PublicInspectionTools.getCalculateDashboard(aprx)
+tool.legal_id="13248000000010432000"
+tool.execute()
+
    

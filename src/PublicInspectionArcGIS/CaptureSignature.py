@@ -4,9 +4,9 @@ import os
 from datetime import datetime
 from PublicInspectionArcGIS.Utils import ToolboxLogger, Configuration
 from PublicInspectionArcGIS.ArcpyDataAccess import ArcpyDataAccess
-from PublicInspectionArcGIS.PublicInspectionTool import PublicInspectionTool
+from PublicInspectionArcGIS.PublicInspection import PublicInspection
 
-class CaptureSignaturesTool(PublicInspectionTool) :
+class CaptureSignatures(PublicInspection) :
     def __init__(self, configuration : Configuration, aprx : arcpy.mp.ArcGISProject) :
         super().__init__(configuration, aprx)
         self.party = None
@@ -14,7 +14,8 @@ class CaptureSignaturesTool(PublicInspectionTool) :
         self.neighboring_approvals = None
 
         self.SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH")
-        self.SIGNATURE_CAPTURE_TOOL_COMMAND = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_COMMAND")
+        self.SIGNATURE_CAPTURE_TOOL_FILE_PATH_COMMAND = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_FILE_PATH_COMMAND")
+        self.SIGNATURE_CAPTURE_TOOL_PARTY_NAME_COMMAND = configuration.getConfigKey("SIGNATURE_CAPTURE_TOOL_PARTY_NAME_COMMAND")
         self.SIGNATURES_RELATIVE_PATH = configuration.getConfigKey("SIGNATURES_RELATIVE_PATH")
 
         self.signatureCaptureToolPath = os.path.join(self.folder, self.SIGNATURE_CAPTURE_TOOL_RELATIVE_PATH)
@@ -54,13 +55,9 @@ class CaptureSignaturesTool(PublicInspectionTool) :
     def update_approvals_isapproved(self, approvals) :
         try:
             for approval in approvals :
-                print(approval)
                 neighboring_approvals = [neighboring_approval for neighboring_approval in self.neighboring_approvals if neighboring_approval["id"] == approval[self.APPROVAL_ID_FIELD]]
                 neighboring_approval = neighboring_approvals[0] if len(neighboring_approvals) > 0 else None
-                print(neighboring_approval)
                 is_approved = neighboring_approval["is_approved"] if neighboring_approval is not None else "Yes"
-                print(is_approved)
-                print()
                 self.update_approvals(
                     fields=[self.APPROVAL_IS_APPROVED_FIELD, self.APPROVAL_DATE_FIELD], 
                     values=[is_approved, datetime.today()],
@@ -131,14 +128,24 @@ class CaptureSignaturesTool(PublicInspectionTool) :
 
         if self.party and self.spatialunit:
             party_id = self.party["id"]
+            party_name = self.party["name"]
 
             ToolboxLogger.info("Party ID: {}".format(party_id.lower()))   
-            command = "\"{}\" {} \"{}\\{}.png\"".format(self.signatureCaptureToolPath, self.SIGNATURE_CAPTURE_TOOL_COMMAND, self.signaturesPath, party_id.lower())
+            command = "\"{}\" {} \"{}\\{}.png\" {} \"{}\"".format(
+                self.signatureCaptureToolPath, 
+                self.SIGNATURE_CAPTURE_TOOL_FILE_PATH_COMMAND, 
+                self.signaturesPath, 
+                party_id.lower(),
+                self.SIGNATURE_CAPTURE_TOOL_PARTY_NAME_COMMAND, 
+                party_name
+                )
             output = os.popen(command)
             output.read()
 
             signatureFilename = "{}.png".format(party_id.lower())
+            fingerPrintFilename = "{}_fp.png".format(party_id.lower())
             signatureFilePath = os.path.join(self.signaturesPath, signatureFilename)
+            fingerPrintFilePath = os.path.join(self.signaturesPath, fingerPrintFilename)
 
             if os.path.exists(signatureFilePath) :
                 ToolboxLogger.info("Signature File: {}".format(signatureFilename))
@@ -170,6 +177,14 @@ class CaptureSignaturesTool(PublicInspectionTool) :
                     values = []
                     value = tuple([approval_signature[self.APPROVAL_SIGNATURE_ID_FIELD], signatureFilePath])
                     values.append(value)
+
+                    print(signatureFilePath)
+                    print(os.path.exists(signatureFilePath))
+                    print(fingerPrintFilePath)
+                    print(os.path.exists(fingerPrintFilePath))
+                    if os.path.exists(fingerPrintFilePath) :
+                        value = tuple([approval_signature[self.APPROVAL_SIGNATURE_ID_FIELD], fingerPrintFilePath])
+                        values.append(value)
 
                     match_da.insert(self.matchtableName, [self.matchField, self.pictureField], values)
                 match_da = None
